@@ -1,0 +1,10 @@
+# 這個專案自己是一個獨立的 GitHub 倉庫（公開），所以需要自己的 .gitignore。
+# 工作區根目錄那份管不到這裡。
+
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+
+# 下載下來的備份 JSON 不要進版控（裡面是你的訓練紀錄）
+自重訓練備份-*.json

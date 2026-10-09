@@ -1,0 +1,46 @@
+#  推上 main 就自動部署到 GitHub Pages
+#  ------------------------------------------------------------
+#  這個流程跑在 GitHub 的伺服器上，你的電腦關機也照跑。
+#  它不需要編譯，只是把 public/ 整個資料夾當成網站上傳。
+#
+#  第一次要用之前，得先去倉庫的 Settings → Pages，
+#  把「Source」選成 GitHub Actions（不是 Deploy from a branch）。
+
+name: 部署到 GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:          # 也可以手動在 Actions 頁面按一下就跑
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時只跑一個部署，後來的會取消前面還沒跑完的
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 取出程式碼
+        uses: actions/checkout@v4
+
+      - name: 準備 Pages
+        uses: actions/configure-pages@v5
+
+      - name: 把 public 資料夾打包成網站
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: 部署
+        id: deployment
+        uses: actions/deploy-pages@v4

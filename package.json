@@ -1,0 +1,6 @@
+{
+  "name": "bodyweight-ladder",
+  "description": "居家自重訓練計畫：十條漸進階梯、四天輪替課表，資料存在 Supabase，網頁部署在 GitHub Pages",
+  "type": "module",
+  "private": true
+}
