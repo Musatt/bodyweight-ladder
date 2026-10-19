@@ -1,0 +1,51 @@
+#  讓 Supabase 不要睡著
+#  ------------------------------------------------------------
+#  為什麼需要它？
+#  Supabase 免費方案的規則是「連續 7 天沒有任何連線就把專案暫停」。
+#  暫停不會刪資料，但網頁會連不上，要手動去後台按恢復、等好幾分鐘。
+#  2026-10-19 就發生過一次。
+#
+#  這個流程每週一和週四各去讀一次資料庫（最長間隔 4 天，安全地在 7 天內），
+#  讀到就算「有連線」，七天的計時器重新開始。
+#
+#  它跑在 GitHub 的伺服器上，所以你電腦關機、出國、忘記都照跑。
+#
+#  ⚠️ 一個跑不掉的限制：
+#  GitHub 規定「公開倉庫超過 60 天沒有任何更動，排程就會被自動停用」。
+#  所以這不是永動機。被停用時 GitHub 會寄信給你，
+#  到 Actions 頁面按一下「Enable workflow」就會恢復；
+#  或是隨便推一個 commit 上來，60 天的計時器也會重新開始。
+
+name: 讓 Supabase 不要睡著
+
+on:
+  schedule:
+    # 時間是 UTC。03:00 UTC = 台灣時間早上 11 點
+    - cron: '0 3 * * 1,4'
+  workflow_dispatch:          # 也可以手動在 Actions 頁面按一下就跑
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 讀一下資料庫
+        run: |
+          # 這把金鑰是公開金鑰，本來就寫在 public/js/supabase-config.js 裡，
+          # 不是密碼，所以不需要設成 GitHub Secret。
+          # 沒登入的話安全規則會讓它回傳空陣列，但「有連到資料庫」這件事成立，
+          # 而那正是我們要的。
+          KEY="sb_publishable_Ps-AVHlvlXk8HavZdshYmw_19nZJdoY"
+          URL="https://lvhfwadbaxniuyryrngz.supabase.co/rest/v1/ladder_state?select=user_id&limit=1"
+
+          code=$(curl -s -o /tmp/body -w '%{http_code}' --max-time 30 \
+                   "$URL" -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
+
+          echo "HTTP $code"
+          echo "回應內容：$(cat /tmp/body)"
+
+          if [ "$code" != "200" ]; then
+            echo "::error::資料庫沒有正常回應（HTTP $code）。專案可能已經暫停，或金鑰被換掉了。"
+            exit 1
+          fi
+
+          echo "資料庫是醒著的，七天計時器已重新開始。"
