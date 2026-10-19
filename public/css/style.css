@@ -306,6 +306,13 @@ h3 { font-size: 14.5px; font-weight: 700; margin: 0; }
   background: var(--accent); border-color: var(--accent); color: var(--on-accent);
   font-size: 14px; height: 38px;
 }
+/* 清除：把填錯的格子還原成未填。排在「確定」左邊，低調但按得到 */
+.step .ghostclear {
+  margin-left: auto; margin-right: 0; padding: 0 13px;
+  background: var(--surface); border-color: var(--line-2); color: var(--ink-2);
+  font-weight: 600;
+}
+.step .ghostclear + .ok { margin-left: 7px; }
 
 .grad {
   padding: 10px 14px; background: var(--signal-soft); border-top: 1px solid var(--signal-line);
@@ -322,6 +329,89 @@ h3 { font-size: 14.5px; font-weight: 700; margin: 0; }
 :root:not([data-theme="light"]) .grad button { color: #2C2312; }
 
 .cue { padding: 0 14px 12px; margin: -4px 0 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.6; }
+
+/* ---- 上次做了幾下 ---- */
+.last {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+  padding: 0 14px 9px; margin: -6px 0 0;
+  display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap;
+  font-variant-numeric: tabular-nums;
+}
+.last b { color: var(--ink-2); font-weight: 600; }
+.last .ago { color: var(--ink-3); opacity: .8; }
+.last .otherT { color: var(--signal); }
+
+/* ---- 動作示範圖 ---- */
+.figwrap {
+  padding: 2px 14px 10px;
+  display: flex; align-items: center; gap: 12px;
+}
+.figsvg {
+  width: 136px; height: 88px; flex: none;
+  background: var(--ground); border: 1px solid var(--line);
+  border-radius: 3px; padding: 2px;
+}
+.figsvg .f-body, .figsvg .f-limb {
+  stroke: var(--ink); stroke-width: 3.4; fill: none;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.figsvg .f-limb { stroke: var(--ink-2); stroke-width: 3; }
+.figsvg .f-head { fill: var(--ink); stroke: none; }
+.figsvg .f-ground { stroke: var(--line-2); stroke-width: 2.4; stroke-linecap: round; }
+.figsvg .f-mat { stroke: var(--line-2); stroke-width: 4.5; stroke-linecap: round; }
+.figsvg .f-prop { stroke: var(--line-2); stroke-width: 2.4; fill: none; stroke-linejoin: round; }
+.figsvg .f-arrow { stroke: var(--signal); stroke-width: 2.2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.figcap { font-size: 12px; color: var(--ink-2); line-height: 1.6; }
+
+/* ---- 可點的檔位代號（跳到那條階梯） ---- */
+.tcbtn {
+  font: inherit; font-family: var(--mono); font-size: 12px; font-weight: 600;
+  cursor: pointer; margin-right: 5px; padding: 1px 5px;
+  color: var(--accent); background: var(--accent-soft);
+  border: 1px solid var(--line); border-radius: 2px;
+}
+
+/* ---- 輕鬆模式 ---- */
+.modebar {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  padding: 10px 14px; border-top: 1px solid var(--line); background: var(--surface-2);
+}
+.modebar .lb { font-size: 13px; font-weight: 700; }
+.modebar .sub { font-size: 12px; color: var(--ink-2); width: 100%; line-height: 1.55; }
+.modebtn {
+  font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  margin-left: auto; padding: 7px 14px; min-height: 38px;
+  border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2);
+  border-radius: 3px;
+}
+.modebtn[aria-pressed="true"] { background: var(--signal); border-color: var(--signal); color: var(--surface); }
+:root[data-theme="dark"] .modebtn[aria-pressed="true"],
+:root:not([data-theme="light"]) .modebtn[aria-pressed="true"] { color: #2C2312; }
+
+.ex.must .ex-h .dir::after {
+  content: " · 必做"; color: var(--signal); font-weight: 600;
+}
+.ex.extra { opacity: .62; }
+.extrahead {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-3);
+  padding: 6px 2px 0; border-top: 1px dashed var(--line-2); margin-top: 4px;
+}
+
+/* ---- 階梯收合 ---- */
+.ladder-h { cursor: pointer; }
+.ladder-h .caret {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+  margin-left: 4px; transition: none;
+}
+.card.today { border-color: var(--accent); }
+.card.today .ladder-h { background: var(--accent-soft); }
+.todayhead {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .13em;
+  text-transform: uppercase; color: var(--accent); margin-top: 6px;
+}
+.tier.flash { animation: fl 1.4s ease-out 1; }
+@keyframes fl { 0%, 40% { background: var(--accent-soft); } 100% { background: transparent; } }
 
 /* ---- 按鈕與輸入 ---- */
 .act {
@@ -369,6 +459,9 @@ input[type=date], input[type=text] {
 .tier[data-state="now"] .nm { font-weight: 700; font-size: 14.5px; }
 .tier[data-state="now"] .tq { display: block; }
 .tier[data-state="next"] .nm { color: var(--ink-2); }
+/* 階梯列裡的小圖：比訓練頁的小一點，才不會把清單撐得太長 */
+.tier .figwrap { display: block; padding: 8px 0 2px; }
+.tier .figsvg { width: 118px; height: 76px; }
 .foot { padding: 10px 14px 12px; border-top: 1px solid var(--line); background: var(--surface-2); font-size: 12.5px; color: var(--ink-2); line-height: 1.6; }
 
 /* ---- 歷程 ---- */

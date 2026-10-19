@@ -72,6 +72,11 @@
           <input type="date" id="lg-date">
         </div>
       </div>
+      <div class="modebar">
+        <span class="lb">今天的狀態</span>
+        <button class="modebtn" id="easybtn" aria-pressed="false">正常</button>
+        <span class="sub" id="easysub">五項全做，每項完整組數。</span>
+      </div>
     </div>
 
     <div id="exlist" style="display:flex; flex-direction:column; gap:10px"></div>
@@ -97,11 +102,8 @@
   <!-- ============ 檔位 ============ -->
   <div class="panel" id="p-tier" hidden>
     <h2>目前檔位</h2>
-    <p class="note">琥珀色是你現在的位置。<b>點任何一格就能改</b>，改完「訓練」頁的動作與目標次數會跟著換。三組都做到目標次數就升下一檔，回到 3×5 重新開始。</p>
-    <div id="g-push" style="display:flex; flex-direction:column; gap:10px"></div>
-    <div id="g-pull" style="display:flex; flex-direction:column; gap:10px"></div>
-    <div id="g-legs" style="display:flex; flex-direction:column; gap:10px"></div>
-    <div id="g-core" style="display:flex; flex-direction:column; gap:10px"></div>
+    <p class="note">琥珀色是你現在的位置。階梯預設收合，<b>點標題列可以展開看完整的九檔</b>。點任何一格可以改檔位，會先跳出確認。當天要練的五條會自動排在最上面。</p>
+    <div id="ladderlist" style="display:flex; flex-direction:column; gap:10px"></div>
   </div>
 
   <!-- ============ 課表 ============ -->

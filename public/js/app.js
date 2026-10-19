@@ -2,14 +2,17 @@
 //  畫面與操作邏輯
 // ============================================================
 //  這個檔案只管「畫出來」和「按下去會怎樣」。
-//  所有跟雲端講話的事都丟給 store.js，所有內容都放在 data.js。
+//  所有跟雲端講話的事都丟給 store.js，所有內容都放在 data.js，
+//  所有示範圖都放在 figures.js。
 //
 //  升級引擎的規則（整份計劃只靠這一條）：
 //    三組都達到目標次數 → 跳出升檔按鈕 → 升上去之後清空該動作的格子
 //  判斷達標的程式在 renderExercises() 裡的 hit / canUp 兩行。
+//  注意：輕鬆模式下不會跳升檔，因為那天只做了一半的組數，不算數。
 // ============================================================
 
 import { PYR, LADDERS, DAYS, DAYORDER, GROUPS, WARMUP, L } from './data.js';
+import { figureSVG } from './figures.js';
 import * as store from './store.js';
 
 /* ================= 狀態 ================= */
@@ -18,7 +21,10 @@ let tiers = {};
 let sessions = [];
 let draft = null;
 let openPick = null;      // {key, i} 目前展開的是哪一格
+let expanded = {};        // 檔位頁哪幾條階梯是展開的
 let booted = false;
+let curTab = 'log';
+const scrollPos = { log: 0, hist: 0, tier: 0, week: 0, rule: 0 };
 
 /* ================= 小工具 ================= */
 
@@ -42,30 +48,70 @@ function tierIdx(key, item) {
   return i;
 }
 
+/**
+ * 這個動作今天要做幾組。
+ * 輕鬆模式組數砍半、次數目標不變（次數不變才能跟以前的紀錄比）。
+ * 但必做的項目至少留 2 組——本來就只排 2 組的動作再砍成 1 組，
+ * 那一項等於沒練到，失去「必做」的意義。
+ */
+function setsFor(it, t) {
+  const base = t.pyr ? 3 : (it.s || 3);
+  if (!draft || !draft.easy) return base;
+  return Math.min(base, Math.max(it.must ? 2 : 1, Math.ceil(base / 2)));
+}
+
 /** 這個動作每一組的目標數字，回傳一個陣列 */
 function targets(t, sets) {
-  if (t.pyr) return PYR.slice();
-  const n = sets || 3;
+  if (t.pyr) return PYR.slice(0, sets);
   const a = [];
-  for (let i = 0; i < n; i++) a.push(t.v);
+  for (let i = 0; i < (sets || 3); i++) a.push(t.v);
   return a;
 }
 function unitOf(t) { return t.pyr ? '組' : (t.u === 'sec' ? '秒' : '下'); }
 function fmtTarget(t, sets) {
   const sd = t.side ? '／邊' : '';
-  if (t.pyr) return '5+3+1 × 10秒' + sd;
+  if (t.pyr) return PYR.slice(0, sets).join('+') + ' × 10秒' + sd;
   if (t.u === 'sec') return (sets || 3) + '×' + t.v + '秒';
   return (sets || 3) + '×' + t.v + sd;
 }
+
+/**
+ * 快選數字。
+ * 以前是「目標 ±4」，所以目標 12 時只給 8~16——剛升檔的人要從 5 下
+ * 開始，卻在選項裡找不到 5，跟守則打架。現在一律把 0~5 這段也放進來。
+ */
 function chipVals(t, tv) {
-  const out = [];
-  if (t.pyr) { for (let i = 1; i <= 8; i++) out.push(i); return out; }
+  if (t.pyr) return [1, 2, 3, 4, 5, 6, 7, 8];
   if (t.u === 'sec') {
-    for (let i = -3; i <= 4; i++) { const s = tv + i * 5; if (s >= 5) out.push(s); }
+    const out = [];
+    for (let s = 5; s <= tv + 20; s += 5) out.push(s);
     return out;
   }
-  for (let i = Math.max(0, tv - 4); i <= tv + 4; i++) out.push(i);
-  return out;
+  const set = new Set([0, 1, 2, 3, 4, 5]);
+  for (let i = Math.max(0, tv - 4); i <= tv + 4; i++) set.add(i);
+  return Array.from(set).sort((a, b) => a - b);
+}
+
+/* ================= 上次做了幾下 ================= */
+
+/** 找出這個動作最近一次的紀錄，給「上次 12 / 11 / 9」用 */
+function lastFor(key) {
+  const sorted = sessions.slice().sort((a, b) => (a.d < b.d ? 1 : (a.d > b.d ? -1 : 0)));
+  for (const s of sorted) {
+    for (const x of (s.ex || [])) {
+      if (x.key === key && x.sets && x.sets.length) {
+        return { sets: x.sets, ti: x.ti, d: s.d };
+      }
+    }
+  }
+  return null;
+}
+
+function daysAgo(d) {
+  const diff = Math.round((new Date(today()) - new Date(d)) / 864e5);
+  if (diff <= 0) return '今天';
+  if (diff === 1) return '昨天';
+  return diff + ' 天前';
 }
 
 /* ================= 同步狀態橫幅 ================= */
@@ -86,13 +132,13 @@ function nextDay() {
   const p = DAYORDER.indexOf(last.k);
   return DAYORDER[(p + 1) % 4];
 }
-function freshDraft(k) { return { d: today(), k: k || nextDay(), ex: {} }; }
+function freshDraft(k) { return { d: today(), k: k || nextDay(), ex: {}, easy: false }; }
 
 let draftTimer = null;
 function saveDraftSoon() {
   clearTimeout(draftTimer);
   draftTimer = setTimeout(() => {
-    store.saveDraft({ d: draft.d, k: draft.k, ex: draft.ex, n: $('lg-note').value });
+    store.saveDraft({ d: draft.d, k: draft.k, ex: draft.ex, easy: draft.easy, n: $('lg-note').value });
   }, 800);
 }
 
@@ -111,73 +157,123 @@ function renderDayPills() {
       const k = b.getAttribute('data-d');
       if (k === draft.k) return;
       draft.k = k; draft.ex = {}; openPick = null;
-      renderDayPills(); renderExercises(); saveDraftSoon();
+      renderDayPills(); renderExercises(); buildLadders(); saveDraftSoon();
     });
   });
   $('rot-hint').textContent = sessions.length ? ('輪替下一天：DAY ' + nextDay()) : '從 DAY A 開始';
+}
+
+function paintModeBar() {
+  const b = $('easybtn');
+  b.setAttribute('aria-pressed', draft.easy ? 'true' : 'false');
+  b.textContent = draft.easy ? '輕鬆' : '正常';
+  $('easysub').textContent = draft.easy
+    ? '只做必做的三項、組數砍半，次數目標不變。其他項目排在下面，行有餘力再追加。這天不會跳升檔。'
+    : '五項全做，每項完整組數。';
+}
+
+/** 一張動作卡 */
+function exCard(it, t, ti, l, isExtra) {
+  const sets = setsFor(it, t);
+  const tv = targets(t, sets);
+  const got = draft.ex[it.k] || [];
+
+  const full = got.length >= sets && got.slice(0, sets).every((x) => typeof x === 'number');
+  const hit = full && tv.every((v, i) => got[i] >= v);
+  // 輕鬆模式組數砍半，達標不算數，不給升檔
+  const canUp = hit && !draft.easy && ti < l.tiers.length - 1;
+
+  let h = '<div class="ex' + (full ? ' filled' : '')
+    + (draft.easy && it.must ? ' must' : '') + (isExtra ? ' extra' : '')
+    + '" data-ex="' + it.k + '">';
+
+  h += '<div class="ex-h"><div><span class="dir">' + esc(l.dir) + '</span>'
+    + '<span class="nm"><button class="tcbtn" data-jump="' + it.k + '" title="跳到這條階梯">' + esc(t.c) + '</button>'
+    + esc(t.n) + '</span></div>'
+    + '<span class="tgt">目標 ' + esc(fmtTarget(t, sets)) + '</span></div>';
+
+  // 上次做了幾下
+  const last = lastFor(it.k);
+  if (last) {
+    const nums = last.sets.filter((v) => typeof v === 'number').join(' / ');
+    const otherTier = last.ti !== ti
+      ? ' <span class="otherT">(當時 ' + esc(l.tiers[last.ti] ? l.tiers[last.ti].c : '?') + ')</span>' : '';
+    h += '<p class="last">上次 <b>' + esc(nums) + '</b>' + otherTier
+      + ' <span class="ago">· ' + esc(daysAgo(last.d)) + '</span></p>';
+  }
+
+  // 格子
+  h += '<div class="slots">';
+  const n = Math.max(sets, got.length);
+  for (let i = 0; i < n; i++) {
+    const v = got[i];
+    const lab = t.pyr ? ('第' + (i + 1) + '輪') : ('組 ' + (i + 1));
+    h += '<button class="slot" data-k="' + it.k + '" data-i="' + i + '"'
+      + (typeof v === 'number' ? ' data-set="1"' : '')
+      + ' aria-expanded="' + (openPick && openPick.key === it.k && openPick.i === i) + '">'
+      + '<span class="k">' + lab + '</span>'
+      + '<span class="v">' + (typeof v === 'number' ? v : '—') + '</span></button>';
+  }
+  h += '<button class="slot add" data-k="' + it.k + '" data-add="1" title="加一組">＋</button></div>';
+
+  // 選數字的面板
+  if (openPick && openPick.key === it.k) {
+    const pi = openPick.i;
+    const ptv = tv[pi] !== undefined ? tv[pi] : tv[tv.length - 1];
+    const cur = typeof got[pi] === 'number' ? got[pi] : ptv;
+    h += '<div class="picker"><div class="lb">'
+      + (t.pyr ? ('第 ' + (pi + 1) + ' 輪 · 做幾組 10 秒（目標 ' + ptv + ' 組）')
+        : ('第 ' + (pi + 1) + ' 組 · 做了幾' + unitOf(t) + '（目標 ' + ptv + unitOf(t) + '）'))
+      + (t.side ? ' · 每邊' : '') + '</div><div class="chips">';
+    chipVals(t, ptv).forEach((cv) => {
+      h += '<button class="chip' + (cv === ptv ? ' tg' : '') + '" data-pick="' + cv + '">' + cv + '</button>';
+    });
+    h += '</div><div class="step"><button data-nudge="-1">−</button>'
+      + '<span class="val" id="stepval">' + cur + '</span>'
+      + '<button data-nudge="1">＋</button>'
+      + '<button class="ok ghostclear" data-clear="' + it.k + '" data-ci="' + pi + '">清除</button>'
+      + '<button class="ok" data-pick="' + cur + '" id="stepok">確定</button></div></div>';
+  }
+
+  h += '<div class="grad"' + (canUp ? '' : ' hidden') + '>'
+    + '三組都達標了　→　升到 ' + (canUp ? esc(l.tiers[ti + 1].c + ' ' + l.tiers[ti + 1].n) : '')
+    + '<button data-up="' + it.k + '">升檔</button></div>';
+
+  // 示範圖
+  const fig = figureSVG(it.k, ti);
+  if (fig) h += '<div class="figwrap">' + fig + '<span class="figcap">' + esc(t.n) + '</span></div>';
+
+  h += '<p class="cue">' + esc(t.q) + '</p></div>';
+  return h;
 }
 
 function renderExercises() {
   const day = DAYS[draft.k];
   let h = '';
 
-  day.items.forEach((it) => {
-    const l = L[it.k];
-    const ti = tierIdx(it.k, it);
-    const t = l.tiers[ti];
-    const sets = t.pyr ? 3 : (it.s || 3);
-    const tv = targets(t, sets);
-    const got = draft.ex[it.k] || [];
+  // 輕鬆模式時把必做的排前面，其他的收到分隔線下面
+  const items = day.items.slice();
+  const main = draft.easy ? items.filter((x) => x.must) : items;
+  const extra = draft.easy ? items.filter((x) => !x.must) : [];
 
-    const full = got.length >= sets && got.slice(0, sets).every((x) => typeof x === 'number');
-    const hit = full && tv.every((v, i) => got[i] >= v);
-    const canUp = hit && ti < l.tiers.length - 1;
-
-    h += '<div class="ex' + (full ? ' filled' : '') + '" data-ex="' + it.k + '">'
-      + '<div class="ex-h"><div><span class="dir">' + esc(l.dir) + '</span>'
-      + '<span class="nm"><span class="tc">' + esc(t.c) + '</span>' + esc(t.n) + '</span></div>'
-      + '<span class="tgt">目標 ' + esc(fmtTarget(t, sets)) + '</span></div>'
-      + '<div class="slots">';
-
-    const n = Math.max(sets, got.length);
-    for (let i = 0; i < n; i++) {
-      const v = got[i];
-      const lab = t.pyr ? ('第' + (i + 1) + '輪') : ('組 ' + (i + 1));
-      h += '<button class="slot" data-k="' + it.k + '" data-i="' + i + '"'
-        + (typeof v === 'number' ? ' data-set="1"' : '')
-        + ' aria-expanded="' + (openPick && openPick.key === it.k && openPick.i === i) + '">'
-        + '<span class="k">' + lab + '</span>'
-        + '<span class="v">' + (typeof v === 'number' ? v : '—') + '</span></button>';
-    }
-    h += '<button class="slot add" data-k="' + it.k + '" data-add="1" title="加一組">＋</button></div>';
-
-    if (openPick && openPick.key === it.k) {
-      const pi = openPick.i;
-      const ptv = tv[pi] !== undefined ? tv[pi] : tv[tv.length - 1];
-      const cur = typeof got[pi] === 'number' ? got[pi] : ptv;
-      h += '<div class="picker"><div class="lb">'
-        + (t.pyr ? ('第 ' + (pi + 1) + ' 輪 · 做幾組 10 秒（目標 ' + ptv + ' 組）')
-          : ('第 ' + (pi + 1) + ' 組 · 做了幾' + unitOf(t) + '（目標 ' + ptv + unitOf(t) + '）'))
-        + (t.side ? ' · 每邊' : '') + '</div><div class="chips">';
-      chipVals(t, ptv).forEach((cv) => {
-        h += '<button class="chip' + (cv === ptv ? ' tg' : '') + '" data-pick="' + cv + '">' + cv + '</button>';
-      });
-      h += '</div><div class="step"><button data-nudge="-1">−</button>'
-        + '<span class="val" id="stepval">' + cur + '</span>'
-        + '<button data-nudge="1">＋</button>'
-        + '<button class="ok" data-pick="' + cur + '" id="stepok">確定</button></div></div>';
-    }
-
-    h += '<div class="grad"' + (canUp ? '' : ' hidden') + '>'
-      + '三組都達標了　→　升到 ' + (canUp ? esc(l.tiers[ti + 1].c + ' ' + l.tiers[ti + 1].n) : '')
-      + '<button data-up="' + it.k + '">升檔</button></div>';
-
-    h += '<p class="cue">' + esc(t.q) + '</p></div>';
+  main.forEach((it) => {
+    const l = L[it.k], ti = tierIdx(it.k, it);
+    h += exCard(it, l.tiers[ti], ti, l, false);
   });
+  if (extra.length) {
+    h += '<div class="extrahead">行有餘力再追加</div>';
+    extra.forEach((it) => {
+      const l = L[it.k], ti = tierIdx(it.k, it);
+      h += exCard(it, l.tiers[ti], ti, l, true);
+    });
+  }
 
   const host = $('exlist');
   host.innerHTML = h;
+  wireExercises(host);
+}
 
+function wireExercises(host) {
   host.querySelectorAll('.slot').forEach((b) => {
     b.addEventListener('click', () => {
       const k = b.getAttribute('data-k');
@@ -185,8 +281,7 @@ function renderExercises() {
         const arr = draft.ex[k] || (draft.ex[k] = []);
         const it2 = DAYS[draft.k].items.filter((x) => x.k === k)[0];
         const t2 = L[k].tiers[tierIdx(k, it2)];
-        const base = t2.pyr ? 3 : (it2.s || 3);
-        openPick = { key: k, i: Math.max(base, arr.length) };
+        openPick = { key: k, i: Math.max(setsFor(it2, t2), arr.length) };
         renderExercises();
         return;
       }
@@ -208,7 +303,7 @@ function renderExercises() {
       const k = openPick.key;
       const it3 = DAYS[draft.k].items.filter((x) => x.k === k)[0];
       const t3 = L[k].tiers[tierIdx(k, it3)];
-      const need = t3.pyr ? 3 : (it3.s || 3);
+      const need = setsFor(it3, t3);
       const nxt = openPick.i + 1;
       openPick = (nxt < need && typeof arr[nxt] !== 'number') ? { key: k, i: nxt } : null;
 
@@ -216,10 +311,24 @@ function renderExercises() {
     });
   });
 
+  // 清除：把這一格還原成「未填」，不是填 0
+  host.querySelectorAll('[data-clear]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const k = b.getAttribute('data-clear');
+      const i = parseInt(b.getAttribute('data-ci'), 10);
+      const arr = draft.ex[k];
+      if (arr) {
+        arr[i] = null;
+        while (arr.length && arr[arr.length - 1] == null) arr.pop();
+      }
+      openPick = null;
+      renderExercises(); saveDraftSoon();
+    });
+  });
+
   host.querySelectorAll('[data-nudge]').forEach((b) => {
     b.addEventListener('click', () => {
-      const el = $('stepval');
-      const ok = $('stepok');
+      const el = $('stepval'), ok = $('stepok');
       if (!el || !ok) return;
       let v = parseInt(el.textContent, 10) + parseInt(b.getAttribute('data-nudge'), 10);
       if (v < 0) v = 0;
@@ -234,55 +343,120 @@ function renderExercises() {
       tiers[k] = Math.min(tiers[k] + 1, L[k].tiers.length - 1);
       draft.ex[k] = [];
       openPick = null;
-      renderExercises(); paintTiers(); buildWeek(); saveDraftSoon();
+      renderExercises(); buildLadders(); saveDraftSoon();
       await store.saveTiers(tiers);
+    });
+  });
+
+  // 點檔位代號 → 跳到檔位頁的那條階梯
+  host.querySelectorAll('[data-jump]').forEach((b) => {
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      jumpToLadder(b.getAttribute('data-jump'));
     });
   });
 }
 
 /* ================= 檔位頁 ================= */
 
-function buildLadders() {
+/** 今天這天會練到的階梯排最前面，其餘照推／拉／腿／核心分組 */
+function ladderOrder() {
+  const todays = DAYS[draft.k].items.map((x) => x.k);
+  const rest = [];
   Object.keys(GROUPS).forEach((g) => {
-    const host = $(GROUPS[g][0]);
-    let h = '<div class="hint" style="margin-top:6px">' + GROUPS[g][1] + '</div>';
-    LADDERS.filter((l) => l.g === g).forEach((l) => {
-      h += '<div class="card"><div class="ladder-h"><span class="t">' + esc(l.title) + '</span>'
-        + '<span class="s">' + esc(l.sub) + '</span>'
-        + '<span class="pos" data-pos="' + l.key + '"></span></div>';
-      l.tiers.forEach((t, i) => {
-        h += '<button type="button" class="tier" data-tk="' + l.key + '" data-ti="' + i + '">'
-          + '<span class="code">' + esc(t.c) + '</span>'
-          + '<span class="nm">' + esc(t.n) + '<span class="tq">' + esc(t.q) + '</span></span>'
-          + '<span class="tg">' + esc(fmtTarget(t, 3)) + '</span></button>';
-      });
-      h += '<div class="foot">' + esc(l.foot) + '</div></div>';
-    });
-    host.innerHTML = h;
+    LADDERS.filter((l) => l.g === g && todays.indexOf(l.key) < 0).forEach((l) => rest.push(l.key));
+  });
+  return { todays, rest };
+}
+
+function ladderCard(key, isToday) {
+  const l = L[key];
+  const cur = tierIdx(key);
+  const open = !!expanded[key];
+
+  let h = '<div class="card' + (isToday ? ' today' : '') + '" data-card="' + key + '">'
+    + '<div class="ladder-h" data-toggle="' + key + '" role="button" tabindex="0">'
+    + '<span class="t">' + esc(l.title) + '</span>'
+    + '<span class="s">' + esc(l.sub) + '</span>'
+    + '<span class="pos">' + esc(l.tiers[cur].c + ' / ' + l.tiers[l.tiers.length - 1].c) + '</span>'
+    + '<span class="caret">' + (open ? '收合 ▲' : '展開 ▼') + '</span>'
+    + '</div>';
+
+  // 收合時只畫目前那一檔，展開時畫全部
+  l.tiers.forEach((t, i) => {
+    if (!open && i !== cur) return;
+    const state = i < cur ? 'done' : (i === cur ? 'now' : 'next');
+    const fig = (i === cur || open) ? figureSVG(key, i) : null;
+    h += '<button type="button" class="tier" data-tk="' + key + '" data-ti="' + i + '" data-state="' + state + '"'
+      + ' aria-pressed="' + (i === cur) + '">'
+      + '<span class="code">' + esc(t.c) + '</span>'
+      + '<span class="nm">' + esc(t.n)
+      + '<span class="tq">' + esc(t.q) + '</span>'
+      + (fig ? '<span class="figwrap">' + fig + '</span>' : '')
+      + '</span>'
+      + '<span class="tg">' + esc(fmtTarget(t, 3)) + '</span></button>';
   });
 
-  document.querySelectorAll('.tier').forEach((b) => {
+  if (open) h += '<div class="foot">' + esc(l.foot) + '</div>';
+  return h + '</div>';
+}
+
+function buildLadders() {
+  const { todays, rest } = ladderOrder();
+  let h = '<div class="todayhead">今天 DAY ' + esc(draft.k) + ' 會練到</div>';
+  todays.forEach((k) => { h += ladderCard(k, true); });
+  h += '<div class="hint" style="margin-top:10px">其他階梯</div>';
+  rest.forEach((k) => { h += ladderCard(k, false); });
+
+  const host = $('ladderlist');
+  host.innerHTML = h;
+
+  host.querySelectorAll('[data-toggle]').forEach((b) => {
+    const go = () => {
+      const k = b.getAttribute('data-toggle');
+      expanded[k] = !expanded[k];
+      buildLadders();
+    };
+    b.addEventListener('click', go);
+    b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
+
+  host.querySelectorAll('.tier').forEach((b) => {
     b.addEventListener('click', async () => {
       const k = b.getAttribute('data-tk');
-      tiers[k] = parseInt(b.getAttribute('data-ti'), 10);
+      const i = parseInt(b.getAttribute('data-ti'), 10);
+      const curI = tierIdx(k);
+      if (i === curI) return;
+
+      const l = L[k];
+      // 不小心按到就換檔很傷，所以一定要確認
+      const ok = confirm(
+        '「' + l.title + '」\n\n'
+        + '從　' + l.tiers[curI].c + ' ' + l.tiers[curI].n + '\n'
+        + '換成　' + l.tiers[i].c + ' ' + l.tiers[i].n + '\n\n'
+        + (i > curI ? '（往上＝變難）' : '（往下＝退檔，變簡單）')
+      );
+      if (!ok) return;
+
+      tiers[k] = i;
       if (draft && draft.ex[k]) draft.ex[k] = [];
-      paintTiers(); renderExercises(); buildWeek(); saveDraftSoon();
+      buildLadders(); renderExercises(); buildWeek(); saveDraftSoon();
       await store.saveTiers(tiers);
     });
   });
 }
 
-function paintTiers() {
-  LADDERS.forEach((l) => {
-    const cur = tierIdx(l.key);
-    document.querySelectorAll('[data-tk="' + l.key + '"]').forEach((b) => {
-      const i = parseInt(b.getAttribute('data-ti'), 10);
-      b.setAttribute('data-state', i < cur ? 'done' : (i === cur ? 'now' : 'next'));
-      b.setAttribute('aria-pressed', i === cur ? 'true' : 'false');
-    });
-    const p = document.querySelector('[data-pos="' + l.key + '"]');
-    if (p) p.textContent = l.tiers[cur].c + ' / ' + l.tiers[l.tiers.length - 1].c;
-  });
+/** 從訓練頁的檔位代號跳過來：切頁籤、展開、捲到位置、閃一下 */
+function jumpToLadder(key) {
+  expanded[key] = true;
+  switchTab('tier', true);
+  buildLadders();
+  const card = document.querySelector('[data-card="' + key + '"]');
+  if (!card) return;
+  card.scrollIntoView({ block: 'start' });
+  window.scrollBy(0, -70);          // 讓出上方那條固定的標題列
+  const now = card.querySelector('[data-state="now"]');
+  if (now) { now.classList.add('flash'); setTimeout(() => now.classList.remove('flash'), 1600); }
 }
 
 /* ================= 課表頁 ================= */
@@ -298,7 +472,7 @@ function buildWeek() {
       const t = l.tiers[tierIdx(it.k, it)];
       const sets = t.pyr ? 3 : (it.s || 3);
       h += '<li><span class="idx">' + (i + 1) + '</span><span><b>' + esc(l.dir) + '</b> — '
-        + esc(t.c + ' ' + t.n) + '<em>' + esc(fmtTarget(t, sets)) + '</em></span></li>';
+        + esc(t.c + ' ' + t.n) + '<em>' + esc(fmtTarget(t, sets)) + (it.must ? ' · 輕鬆模式也要做' : '') + '</em></span></li>';
     });
     h += '</ol></div>';
   });
@@ -348,7 +522,7 @@ function renderHist() {
       const ok = await store.deleteSession(id);
       if (!ok) return;                       // 失敗就什麼都不動，橫幅會說原因
       sessions = sessions.filter((x) => x.id !== id);
-      renderHist(); paintWeekChip(); renderDayPills();
+      renderHist(); paintWeekChip(); renderDayPills(); renderExercises();
     });
   });
 }
@@ -365,16 +539,28 @@ function paintWeekChip() {
 
 const PANELS = { log: 'p-log', hist: 'p-hist', tier: 'p-tier', week: 'p-week', rule: 'p-rule' };
 
-function wireTabs() {
+/**
+ * 切換頁籤。會記住每一頁各自捲到哪裡，切回來停在原位——
+ * 不然每次從守則切回檔位都要重新捲一次，查東西很煩。
+ */
+function switchTab(t, toTop) {
+  if (curTab === t && !toTop) return;
+  scrollPos[curTab] = window.scrollY;
+  curTab = t;
+
   const tabs = $('tabs');
-  tabs.querySelectorAll('button').forEach((b) => {
-    b.addEventListener('click', () => {
-      const t = b.getAttribute('data-t');
-      tabs.querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', x === b ? 'true' : 'false'));
-      Object.keys(PANELS).forEach((k) => { $(PANELS[k]).hidden = (k !== t); });
-      if (t === 'week') buildWeek();
-      window.scrollTo(0, 0);
-    });
+  tabs.querySelectorAll('button').forEach((x) => {
+    x.setAttribute('aria-selected', x.getAttribute('data-t') === t ? 'true' : 'false');
+  });
+  Object.keys(PANELS).forEach((k) => { $(PANELS[k]).hidden = (k !== t); });
+  if (t === 'week') buildWeek();
+
+  window.scrollTo(0, toTop ? 0 : (scrollPos[t] || 0));
+}
+
+function wireTabs() {
+  $('tabs').querySelectorAll('button').forEach((b) => {
+    b.addEventListener('click', () => switchTab(b.getAttribute('data-t'), false));
   });
 }
 
@@ -386,6 +572,12 @@ function wireLogActions() {
     saveDraftSoon();
   });
   $('lg-note').addEventListener('input', saveDraftSoon);
+
+  $('easybtn').addEventListener('click', () => {
+    draft.easy = !draft.easy;
+    openPick = null;
+    paintModeBar(); renderExercises(); saveDraftSoon();
+  });
 
   $('lg-save').addEventListener('click', async () => {
     const ex = [];
@@ -416,11 +608,13 @@ function wireLogActions() {
     draft = freshDraft();
     openPick = null;
     $('lg-date').value = draft.d;
-    renderDayPills(); renderExercises(); renderHist(); paintWeekChip();
+    paintModeBar(); renderDayPills(); renderExercises(); buildLadders();
+    renderHist(); paintWeekChip();
     store.clearDraft();
   });
 
   $('lg-clear').addEventListener('click', () => {
+    if (!confirm('清空這次填的所有次數？')) return;
     draft.ex = {}; openPick = null;
     $('lg-note').value = '';
     renderExercises(); saveDraftSoon();
@@ -448,7 +642,7 @@ async function refresh() {
   if (untouched) {
     if (res.draft && res.draft.k && DAYS[res.draft.k] && res.draft.ex && Object.keys(res.draft.ex).length) {
       // 雲端有填到一半的草稿，接回來
-      draft = { d: res.draft.d || today(), k: res.draft.k, ex: res.draft.ex };
+      draft = { d: res.draft.d || today(), k: res.draft.k, ex: res.draft.ex, easy: !!res.draft.easy };
       if (res.draft.n) $('lg-note').value = res.draft.n;
     } else {
       // 沒有草稿：等歷程讀回來之後才知道上次練到哪一天，現在重算一次。
@@ -458,7 +652,7 @@ async function refresh() {
   }
 
   $('lg-date').value = draft.d;
-  paintTiers(); renderDayPills(); renderExercises();
+  paintModeBar(); renderDayPills(); renderExercises(); buildLadders();
   renderHist(); paintWeekChip(); buildWeek();
 }
 
@@ -506,7 +700,8 @@ async function boot() {
   $('whobtn').textContent = store.displayName();
 
   draft = freshDraft();
-  buildLadders(); buildWarmup(); wireTabs(); wireLogActions();
+  // 目前所在那一檔的階梯預設展開，方便邊練邊對照
+  buildWarmup(); wireTabs(); wireLogActions();
   await refresh();
   booted = true;
 }

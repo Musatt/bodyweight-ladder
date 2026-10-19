@@ -157,24 +157,44 @@ export const LADDERS = [
   },
 ];
 
-// 四天課表。s = 組數；cap = 這天最多做到第幾檔；floor = 這天最低從第幾檔起
-// （深蹲那條用 cap/floor 把「雙腳版本」排在 Day B、「單腳版本」排在 Day D）
+// 四天課表。
+//   s     組數
+//   cap   這天最多做到第幾檔；floor = 這天最低從第幾檔起
+//         （深蹲那條用 cap/floor 把「雙腳版本」排在 Day B、「單腳版本」排在 Day D）
+//   must  1 = 輕鬆模式下也要做的項目
+//
+// 輕鬆模式的必做怎麼挑的：每天兩個主項（推／拉，或深蹲／髖鉸鏈）
+// 再加當天那條核心。核心留著是因為它最不累，而且髖鉸鏈與核心
+// 正是護下背的兩項——那恰好是累的時候最不該省的。
+// 注意 A／C 的核心是「抗伸展」，B／D 才是「穩定」，不要寫錯。
 export const DAYS = {
   A: {
     nm: '上肢 · 拉優先', du: '~40 min',
-    items: [{ k: 'vpull', s: 3 }, { k: 'hpush', s: 3 }, { k: 'hpull', s: 3 }, { k: 'vpush', s: 2 }, { k: 'antiext', s: 3 }],
+    items: [
+      { k: 'vpull', s: 3, must: 1 }, { k: 'hpush', s: 3, must: 1 }, { k: 'hpull', s: 3 },
+      { k: 'vpush', s: 2 }, { k: 'antiext', s: 3, must: 1 },
+    ],
   },
   B: {
     nm: '下肢 · 雙腳', du: '~35 min',
-    items: [{ k: 'squat', s: 3, cap: 2 }, { k: 'hinge', s: 3 }, { k: 'calf', s: 2 }, { k: 'antilat', s: 3 }, { k: 'stab', s: 3 }],
+    items: [
+      { k: 'squat', s: 3, cap: 2, must: 1 }, { k: 'hinge', s: 3, must: 1 }, { k: 'calf', s: 2 },
+      { k: 'antilat', s: 3 }, { k: 'stab', s: 3, must: 1 },
+    ],
   },
   C: {
     nm: '上肢 · 推優先', du: '~40 min',
-    items: [{ k: 'hpush', s: 3 }, { k: 'vpull', s: 2 }, { k: 'vpush', s: 3 }, { k: 'hpull', s: 3 }, { k: 'antiext', s: 3 }],
+    items: [
+      { k: 'hpush', s: 3, must: 1 }, { k: 'vpull', s: 2, must: 1 }, { k: 'vpush', s: 3 },
+      { k: 'hpull', s: 3 }, { k: 'antiext', s: 3, must: 1 },
+    ],
   },
   D: {
     nm: '下肢 · 單腳', du: '~35 min',
-    items: [{ k: 'squat', s: 3, floor: 3 }, { k: 'hinge', s: 2 }, { k: 'calf', s: 2 }, { k: 'antilat', s: 3 }, { k: 'stab', s: 3 }],
+    items: [
+      { k: 'squat', s: 3, floor: 3, must: 1 }, { k: 'hinge', s: 2, must: 1 }, { k: 'calf', s: 2 },
+      { k: 'antilat', s: 3 }, { k: 'stab', s: 3, must: 1 },
+    ],
   },
 };
 
