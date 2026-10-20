@@ -1,16 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- 一個月的格子，其中幾格點亮。這就是這個 App 的主畫面在做的事：
-       不看連續天數，只看累積了幾天。縮到 30 像素時還認得出來。 -->
-  <rect width="64" height="64" rx="12" fill="#6B7F5E"/>
-  <g fill="#FBF8F3">
-    <circle cx="19" cy="22" r="4"/>
-    <circle cx="32" cy="22" r="4" opacity=".35"/>
-    <circle cx="45" cy="22" r="4"/>
-    <circle cx="19" cy="34" r="4" opacity=".35"/>
-    <circle cx="32" cy="34" r="4"/>
-    <circle cx="45" cy="34" r="4"/>
-    <circle cx="19" cy="46" r="4"/>
-    <circle cx="32" cy="46" r="4" opacity=".35"/>
-    <circle cx="45" cy="46" r="4" opacity=".35"/>
+  <!-- 一個月的格子，點亮幾格。這就是主畫面在做的事：不看連續，只看累積。
+       縮到 30 像素還認得出來，所以不用圖檔。 -->
+  <rect width="64" height="64" rx="12" fill="#211C15"/>
+  <g>
+    <rect x="13" y="16" width="11" height="11" rx="3" fill="#74A359"/>
+    <rect x="26.5" y="16" width="11" height="11" rx="3" fill="#3A3225"/>
+    <rect x="40" y="16" width="11" height="11" rx="3" fill="#74A359"/>
+    <rect x="13" y="26.5" width="11" height="11" rx="3" fill="#3A3225"/>
+    <rect x="26.5" y="26.5" width="11" height="11" rx="3" fill="#74A359"/>
+    <rect x="40" y="26.5" width="11" height="11" rx="3" fill="#C97E4F"/>
+    <rect x="13" y="37" width="11" height="11" rx="3" fill="#74A359"/>
+    <rect x="26.5" y="37" width="11" height="11" rx="3" fill="#3A3225"/>
+    <rect x="40" y="37" width="11" height="11" rx="3" fill="#3A3225"/>
   </g>
 </svg>

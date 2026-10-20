@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>今天有動</title>
 <meta name="description" content="每天記一下有沒有動。">
-<meta name="theme-color" content="#EAE3D6" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#1A1612" media="(prefers-color-scheme: dark)">
+<!-- 只有一套配色，不跟隨裝置的深淺色設定 -->
+<meta name="theme-color" content="#211C15">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="今天有動">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -56,10 +56,8 @@
     </div>
   </div>
 
-  <!-- ---------- 頁籤一：今天 ---------- -->
+  <!-- ---------- 頁籤一：月曆 ---------- -->
   <div class="wrap tabview" id="v-today">
-
-    <div class="status" id="h-status"></div>
 
     <div class="monthbar">
       <span id="h-monthlabel"></span>
@@ -114,7 +112,7 @@
     <div class="row" id="h-tabs">
       <button data-tab="today" aria-selected="true">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
-        <span class="l">今天</span>
+        <span class="l">月曆</span>
       </button>
       <button data-tab="log" aria-selected="false">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>

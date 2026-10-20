@@ -1,109 +1,92 @@
 /* ============================================================
-   自重訓練階梯 — 樣式
+   今天有動 — 樣式
    ------------------------------------------------------------
-   風格說明（為什麼不套工作區的「深色襯線」）：
-   這是運動中每次看 20 秒、要單手按的東西，不是晚上久看的清單。
-   所以走「大數字、tabular 數字對齊、46px 以上按鈕、淺底為主、
-   自動跟隨手機深淺色」。詳見 docs/美術風格指南.md 第四節。
+   ★ 只有一套配色，不跟隨裝置的深淺色模式。
+     不管使用者的手機或瀏覽器設定成什麼，看到的都是這一套。
+     （所以這份檔案裡沒有、也不要再加 prefers-color-scheme。）
 
-   想換色只改下面 :root 這三區（淺色、系統深色、手動深色）。
+   大地色的配色結構（照設計通則的「基底 ＋ 一個主色 ＋ 兩個點綴 ＋ 中性色」）：
+
+     基底   暖調的深土色，佔畫面最大面積
+     主色   綠。所有「物件」——按鈕、數字、被選到的東西——都是綠的
+     點綴一 陶土橘，用在「其他紀錄」這條線
+     點綴二 沙金色，用在數字和統計
+     中性   奶油色的文字，三階
+
+   為什麼要這樣分：大地色最容易出的問題是**彩度都低、看起來糊成一片**。
+   解法是拉開「明度」和「色相」的距離——基底壓很暗、文字拉很亮，
+   而且綠和陶土橘在色相上分得夠開，不會互相混淆。
    ============================================================ */
 
-/* 取色自實物：森林、草地、土壤、沙、海。
-   不用純黑也不用純灰——文字是深墨綠，陰影染主色，所以整體溫潤不髒。 */
 :root {
-  --ground: #EAE3D6;       /* 曬過的沙 */
-  --surface: #F6F1E7;
-  --surface-2: #DED5C4;
-  --ink: #342E25;          /* 濕土，不是黑 */
-  --ink-2: #6B6153;
-  --ink-3: #988D7D;
-  --line: #DCD2BF;         /* 幾乎看不見，分層靠陰影不靠框線 */
-  --line-2: #C6B9A2;
-  --accent: #7E6240;       /* 陶土。主色走土不走綠，綠只留給「做到了」 */
-  --accent-soft: #E8DFCD;
-  --on-accent: #FFFFFF;
-  --signal: #A8743F;
-  --signal-soft: #F0E3CE;
-  --signal-line: #D3BE9E;
-  --good: #6B7A4E;         /* 草。壓低飽和度，不要變成慶祝 */
-  --good-soft: #E3E5D1;
-  --good-line: #AFB68F;
-  --bad: #94553F;
-  --bad-soft: #EFE0DA;
-  --bad-line: #CBAA9E;
-  --sea: #4F6F7D;          /* 海，用在「其他紀錄」 */
+  /* 讓日期選擇器、下拉選單這些系統元件也跟著用深色 */
+  color-scheme: dark;
 
-  /* 陰影染了主色、而且壓得很低、散得很開。
-     高而聚的陰影＝東西浮在空中＝有動能；低而散＝東西落在紙上＝沉穩。 */
-  --sh-1: 0 1px 2px rgba(43, 60, 50, .05), 0 2px 6px rgba(43, 60, 50, .04);
-  --sh-2: 0 1px 3px rgba(43, 60, 50, .07), 0 5px 16px rgba(43, 60, 50, .05);
-  --sh-accent: 0 2px 7px rgba(60, 84, 68, .16);
+  /* ---- 基底：暖調深土 ---- */
+  --ground: #211C15;        /* 最底層，濕土 */
+  --surface: #2C2619;       /* 卡片，比底色亮一階 */
+  --surface-2: #3A3225;     /* 被按下、次要的區塊 */
+
+  /* ---- 中性：奶油色文字，三階 ---- */
+  --ink: #F0E9D9;           /* 標題與主要內容 */
+  --ink-2: #BCB099;         /* 次要資訊 */
+  --ink-3: #8A7F6A;         /* 註腳、極次要 */
+
+  --line: #3D3426;
+  --line-2: #51462F;
+
+  /* ---- 主色：綠。所有可按的物件都是這個顏色 ---- */
+  --accent: #74A359;        /* 苔綠 */
+  --accent-hi: #8CBB70;     /* 亮一階，hover 用 */
+  --accent-soft: #2B3622;   /* 綠調的底，給被選到的區塊 */
+  --on-accent: #17200F;     /* 綠底上的文字，用深色才讀得清楚 */
+
+  /* ---- 點綴一：陶土。給「其他紀錄」 ---- */
+  --clay: #C97E4F;
+  --clay-soft: #3A2A1C;
+
+  /* ---- 點綴二：沙金。給數字和統計 ---- */
+  --sand: #D9AE62;
+
+  --bad: #C96A4D;
+  --bad-soft: #35201A;
+
+  /* ---- 月曆的三種狀態，刻意用三個差很多的顏色 ---- */
+  --day-empty: #2C2619;     /* 沒紀錄：就是一張卡片 */
+  --day-move: #41632F;      /* 有動：填滿的綠，一眼看得出來 */
+  --day-move-ink: #DDEFCD;
+  --day-other: #4A3524;     /* 只有其他項目：陶土色 */
+  --day-other-ink: #EFC9A6;
+
+  /* ---- 陰影：壓得低、散得開。高而聚＝浮在空中＝有動能，這裡要沉穩 ---- */
+  --sh-1: 0 1px 2px rgba(0, 0, 0, .3), 0 2px 6px rgba(0, 0, 0, .22);
+  --sh-2: 0 1px 3px rgba(0, 0, 0, .34), 0 5px 16px rgba(0, 0, 0, .26);
+  --sh-accent: 0 2px 8px rgba(66, 99, 47, .45);
+
   --r: 11px;
   --r-lg: 14px;
 
   --serif: "Noto Serif TC", "Songti TC", Georgia, serif;
   --sans: "Noto Sans TC", -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* 下面這幾個是給「完整訓練計畫」那半邊用的舊名字，
+     直接對應到上面的新顏色，這樣兩邊不會長得像兩個 App。 */
+  --good: var(--accent);
+  --good-soft: var(--accent-soft);
+  --good-line: #4A6B38;
+  --signal: var(--sand);
+  --signal-soft: #3A2E1A;
+  --signal-line: #6B5530;
+  --sea: var(--clay);
+  --bad-line: #6B3C2E;
 }
 
-/* 深色＝夜裡的泥土，不是森林。綠色只留給「做到了」那一個狀態，
-   不要讓整個畫面變綠。改色要三區一起改，少改一區就有一邊壞掉。 */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --ground: #1A1612;
-    --surface: #231E18;
-    --surface-2: #2D271F;
-    --ink: #EAE3D5;
-    --ink-2: #ABA08F;
-    --ink-3: #7C7263;
-    --line: #332C22;
-    --line-2: #443B2E;
-    --accent: #C9A977;
-    --accent-soft: #2A2318;
-    --on-accent: #1A1612;
-    --signal: #CC9A5E;
-    --signal-soft: #2C2418;
-    --signal-line: #5E4C31;
-    --good: #9FB07A;
-    --good-soft: #242A1B;
-    --good-line: #4A5436;
-    --bad: #CE9077;
-    --bad-soft: #2B1B16;
-    --bad-line: #5F3F33;
-    --sea: #7FA2B0;
-    --sh-1: 0 1px 2px rgba(0, 0, 0, .26), 0 2px 6px rgba(0, 0, 0, .2);
-    --sh-2: 0 1px 3px rgba(0, 0, 0, .3), 0 5px 16px rgba(0, 0, 0, .24);
-    --sh-accent: 0 2px 7px rgba(0, 0, 0, .3);
-  }
-}
-
-:root[data-theme="dark"] {
-  --ground: #1A1612;
-  --surface: #231E18;
-  --surface-2: #2D271F;
-  --ink: #EAE3D5;
-  --ink-2: #ABA08F;
-  --ink-3: #7C7263;
-  --line: #332C22;
-  --line-2: #443B2E;
-  --accent: #C9A977;
-  --accent-soft: #2A2318;
-  --on-accent: #1A1612;
-  --signal: #CC9A5E;
-  --signal-soft: #2C2418;
-  --signal-line: #5E4C31;
-  --good: #9FB07A;
-  --good-soft: #242A1B;
-  --good-line: #4A5436;
-  --bad: #CE9077;
-  --bad-soft: #2B1B16;
-  --bad-line: #5F3F33;
-  --sea: #7FA2B0;
-  --sh-1: 0 1px 2px rgba(0, 0, 0, .26), 0 2px 6px rgba(0, 0, 0, .2);
-  --sh-2: 0 1px 3px rgba(0, 0, 0, .3), 0 5px 16px rgba(0, 0, 0, .24);
-  --sh-accent: 0 2px 7px rgba(0, 0, 0, .3);
-}
+/* 一定要有這條。只要某個元素的 class 設了 display（例如 display:flex），
+   就會蓋過瀏覽器預設的 [hidden]{display:none}，那個元素就藏不住。
+   2026-10-20 踩過：彈出面板的「收回上一次」收不回去、
+   「幾下」的輸入框沒按自己填就出現，都是這個原因。 */
+[hidden] { display: none !important; }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
@@ -170,28 +153,10 @@ body {
 
 .tabview[hidden] { display: none !important; }
 
-/* ---- 今天：狀態 ---- */
-.status {
-  padding: 20px; border-radius: var(--r-lg);
-  border: 1px solid transparent; background: var(--surface); box-shadow: var(--sh-1);
-  display: flex; align-items: center; gap: 14px;
-  transition: background-color .25s ease;
-}
-.status.done { background: var(--good-soft); animation: settle .5s ease-out; }
-.status .ring {
-  width: 44px; height: 44px; border-radius: 50%; flex: none;
-  border: 2px solid var(--line-2);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--ink-3); font-size: 20px;
-}
-.status.done .ring { border-color: var(--good); color: var(--good); }
-.status .big { font-family: var(--serif); font-size: 21px; font-weight: 700; line-height: 1.35; }
-.status.done .big { color: var(--good); }
-
-/* ---- 今天：月曆 ---- */
+/* ---- 月曆 ---- */
 .monthbar {
   display: flex; align-items: center; gap: 10px;
-  margin: 24px 0 12px; font-family: var(--serif); font-size: 17px; font-weight: 600;
+  margin: 0 0 12px; font-family: var(--serif); font-size: 18px; font-weight: 600;
 }
 .monthbar .iconbtn { width: 38px; height: 38px; font-size: 18px; }
 .monthbar .iconbtn:last-child { margin-left: 0; }
@@ -200,25 +165,36 @@ body {
 .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
 .cal-h { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); text-align: center; padding-bottom: 4px; }
 .cal-x { aspect-ratio: 1; }
+/* 月曆的格子有三種狀態，刻意用三個差很多的顏色，
+   這樣不用看圖例也知道哪天做了什麼 */
 .cal-d {
   font: inherit; cursor: pointer; aspect-ratio: 1; position: relative;
-  border: 1px solid transparent; background: var(--surface); color: var(--ink-2);
+  border: 1px solid transparent; background: var(--day-empty); color: var(--ink-3);
   border-radius: 10px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  display: flex; align-items: center; justify-content: center;
   transition: transform .1s ease, background-color .2s ease;
 }
 @media (hover: hover) { .cal-d:not([disabled]):hover { background: var(--surface-2); } }
 .cal-d:not([disabled]):active { transform: scale(.95); }
-.cal-d .n { font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
-.cal-d .pips { display: flex; gap: 3px; height: 7px; align-items: center; }
-.cal-d .pip { width: 7px; height: 7px; border-radius: 50%; background: var(--good); animation: pip .3s ease-out; }
-.cal-d .pip.o { background: var(--sea); }
-.cal-d.moved { background: var(--good-soft); }
-.cal-d.moved .n { color: var(--good); font-weight: 700; }
-.cal-d.other { background: var(--surface-2); }
+.cal-d .n { font-family: var(--mono); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+
+/* 有動：填滿的綠 */
+.cal-d.moved { background: var(--day-move); }
+.cal-d.moved .n { color: var(--day-move-ink); font-weight: 700; }
+/* 只有其他項目：陶土色 */
+.cal-d.other { background: var(--day-other); }
+.cal-d.other .n { color: var(--day-other-ink); }
+/* 兩種都有：綠底，右上角點一顆陶土色 */
+.cal-d.both::after {
+  content: ''; position: absolute; top: 5px; right: 5px;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--clay);
+}
+
+.cal-d.today { box-shadow: inset 0 0 0 1px var(--line-2); }
 .cal-d.today .n { text-decoration: underline; text-underline-offset: 3px; }
-.cal-d.sel { box-shadow: inset 0 0 0 2px var(--accent); }
-.cal-d[disabled] { opacity: .3; cursor: default; background: none; }
+.cal-d.sel { box-shadow: inset 0 0 0 2px var(--sand); }
+.cal-d.today.sel { box-shadow: inset 0 0 0 2px var(--sand); }
+.cal-d[disabled] { opacity: .28; cursor: default; background: none; }
 
 /* ---- 今天：統計 ---- */
 .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 18px; }
@@ -227,7 +203,7 @@ body {
   border: 1px solid transparent; box-shadow: var(--sh-1);
   display: flex; flex-direction: column; gap: 3px;
 }
-.stat .v { font-family: var(--mono); font-size: 26px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.stat .v { font-family: var(--mono); font-size: 26px; font-weight: 600; color: var(--sand); font-variant-numeric: tabular-nums; line-height: 1.1; }
 .stat .k { font-size: 12px; color: var(--ink-2); }
 .stat .d { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
 
@@ -254,8 +230,8 @@ body {
   padding: 12px 14px; margin-bottom: 7px;
   background: var(--surface); border-radius: var(--r); box-shadow: var(--sh-1);
 }
-.doneRow .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex: none; }
-.doneRow .dot.other { background: var(--sea); }
+.doneRow .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+.doneRow .dot.other { background: var(--clay); }
 .doneRow .nm { font-size: 14px; }
 .doneRow .amt { font-family: var(--mono); font-size: 12px; color: var(--ink-3); margin-left: auto; }
 .doneRow .undo {

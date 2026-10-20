@@ -69,15 +69,7 @@ function dayLabel(ds) {
   return (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日';
 }
 
-/* ---------- 頁籤一：今天 ---------- */
-
-function renderStatus() {
-  const moved = movedOn(today());
-  const st = $('h-status');
-  st.className = 'status' + (moved ? ' done' : '');
-  st.innerHTML = '<span class="ring">' + (moved ? '✓' : '·') + '</span>'
-    + '<span class="big">' + (moved ? '今天有動' : '今天還沒有動') + '</span>';
-}
+/* ---------- 頁籤一：月曆 ---------- */
 
 function renderCalendar() {
   const y = monthAnchor.getFullYear(), m = monthAnchor.getMonth();
@@ -94,14 +86,12 @@ function renderCalendar() {
   for (let d = 1; d <= days; d++) {
     const ds = ymd(new Date(y, m, d));
     const mv = movedOn(ds), ot = otherOn(ds);
-    h += '<button class="cal-d' + (mv ? ' moved' : (ot ? ' other' : ''))
+    // 三種狀態用三個差很多的顏色：綠＝有動、陶土＝只有其他、暗＝沒紀錄
+    const cls = mv ? ('moved' + (ot ? ' both' : '')) : (ot ? 'other' : '');
+    h += '<button class="cal-d ' + cls
       + (ds === today() ? ' today' : '') + (ds === selDate ? ' sel' : '') + '"'
       + (ds > today() ? ' disabled' : '') + ' data-day="' + ds + '">'
-      + '<span class="n">' + d + '</span>'
-      + '<span class="pips">'
-      + (mv ? '<span class="pip"></span>' : '')
-      + (ot ? '<span class="pip o"></span>' : '')
-      + '</span></button>';
+      + '<span class="n">' + d + '</span></button>';
   }
   $('h-calendar').innerHTML = h + '</div>';
 
@@ -326,7 +316,7 @@ function renderGuide() {
 /* ---------- 啟動 ---------- */
 
 function renderAll() {
-  renderStatus(); renderCalendar(); renderStats(); renderDay(); renderLogTab();
+  renderCalendar(); renderStats(); renderDay(); renderLogTab();
 }
 
 function wire() {
