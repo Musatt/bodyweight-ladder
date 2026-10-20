@@ -622,11 +622,6 @@ function wireLogActions() {
 
   $('h-export').addEventListener('click', () => store.exportBackup(tiers, sessions));
 
-  $('syncretry').addEventListener('click', () => { $('syncbar').hidden = true; refresh(); });
-
-  $('whobtn').addEventListener('click', () => {
-    if (confirm('登出？資料都在雲端，下次登入同一個 Google 帳號就會回來。')) store.signOut();
-  });
 }
 
 /* ================= 讀取與重新整理 ================= */
@@ -658,57 +653,32 @@ async function refresh() {
 
 /* ================= 啟動 ================= */
 
-function showGate(msg, showButton, errText) {
-  $('app').hidden = true;
-  $('gate').hidden = false;
-  $('gate-spin').hidden = !!showButton || !!errText;
-  $('gate-msg').textContent = msg || '';
-  $('gate-msg').hidden = !msg;
-  $('gate-btn').hidden = !showButton;
-  $('gate-why').hidden = !showButton;
-  $('gate-err').hidden = !errText;
-  if (errText) $('gate-err').textContent = errText;
-}
-
-async function boot() {
-  let signedIn = null;
-  try {
-    signedIn = await store.init(showSyncError);
-  } catch (e) {
-    showGate('', false, '啟動失敗：' + (e.message || e)
-      + '\n\n如果是剛部署上線，先確認 Supabase 的「Site URL」已經填成這一頁的網址。');
-    return;
-  }
-
-  if (!signedIn) {
-    showGate('把紀錄存在雲端，換手機、換電腦都看得到。', true, null);
-    $('gate-btn').addEventListener('click', async () => {
-      $('gate-btn').disabled = true;
-      try {
-        await store.signIn();
-      } catch (e) {
-        $('gate-btn').disabled = false;
-        showGate('', true, '登入失敗：' + (e.message || e));
-      }
-    });
-    return;
-  }
-
-  // 登入成功，把本體放出來
-  $('gate').hidden = true;
-  $('app').hidden = false;
-  $('whobtn').textContent = store.displayName();
-
+/**
+ * 完整訓練計畫的進入點。
+ *
+ * 這一整套（十條階梯、四天課表、升檔引擎）已經不是這個 App 的主體了——
+ * 打開 App 看到的是每日記錄，這裡要從選單進來才會載入。
+ * 原因寫在 README：那套東西的設計目標是「幫一個已經在練的人安排進度」，
+ * 不是「幫人開始」，而現階段需要的是後者。
+ *
+ * 用動態 import 載入，所以沒進來就完全不會下載這些程式。
+ */
+let started = false;
+export async function startLadder() {
+  if (started) { await refresh(); return; }
   draft = freshDraft();
-  // 目前所在那一檔的階梯預設展開，方便邊練邊對照
   buildWarmup(); wireTabs(); wireLogActions();
   await refresh();
+  started = true;
   booted = true;
+}
+
+/** 從別的畫面切回來時重新讀一次 */
+export async function refreshLadder() {
+  if (started) await refresh();
 }
 
 // 切回這個分頁時重新讀一次，這樣手機上記完、回到電腦就看得到
 document.addEventListener('visibilitychange', () => {
   if (booted && document.visibilityState === 'visible') refresh();
 });
-
-boot();

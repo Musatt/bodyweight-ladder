@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>自重訓練階梯</title>
-<meta name="description" content="居家自重訓練計畫：十條漸進階梯、四天輪替課表，記錄每組次數並自動判斷升檔。">
-<meta name="theme-color" content="#F2F4F6" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0D1219" media="(prefers-color-scheme: dark)">
+<title>今天有動</title>
+<meta name="description" content="每天記一下有沒有動。做任何一個項目的任何一下都算數。">
+<meta name="theme-color" content="#F3EEE6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1A1713" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="訓練階梯">
+<meta name="apple-mobile-web-app-title" content="今天有動">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="manifest" href="manifest.webmanifest">
@@ -19,10 +19,10 @@
 </head>
 <body>
 
-<!-- ============ 登入前的畫面 ============ -->
+<!-- ============ 登入前 ============ -->
 <div class="gate" id="gate">
-  <span class="mark">BODYWEIGHT LADDER</span>
-  <h1>自重訓練階梯</h1>
+  <span class="mark">EVERY DAY</span>
+  <h1>今天有動</h1>
   <div class="spin" id="gate-spin"></div>
   <p id="gate-msg">正在確認登入狀態…</p>
   <div class="err" id="gate-err" hidden></div>
@@ -36,27 +36,135 @@
     用 Google 登入
   </button>
   <p class="note" id="gate-why" hidden>
-    登入是為了讓資料庫認得你，確保只有你讀得到自己的訓練紀錄。
+    登入是為了讓資料庫認得你，確保只有你讀得到自己的紀錄。
   </p>
 </div>
 
-<!-- ============ 登入後的本體 ============ -->
-<div id="app" hidden>
-
-<div class="bar">
-  <div class="bar-in">
-    <h1>自重訓練階梯</h1>
-    <span class="wk" id="wkchip">本週 0 / 4</span>
-    <button class="who" id="whobtn" title="點一下可以登出">—</button>
-  </div>
-</div>
+<!-- ============ 登入後 ============ -->
+<div id="shell" hidden>
 
 <div class="sync" id="syncbar" hidden>
   <span id="syncmsg"></span>
   <button id="syncretry">重新讀取</button>
 </div>
 
+<!-- ==================== 每日記錄（主體） ==================== -->
+<div id="habitview">
+
+  <div class="hbar">
+    <div class="hbar-in">
+      <h1>今天有動</h1>
+      <button class="iconbtn" id="menubtn" aria-label="選單">☰</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <section id="h-today">
+      <div class="dateline">
+        <span id="h-dateline"></span>
+        <button class="linkbtn" id="h-backtoday" hidden>回到今天</button>
+      </div>
+
+      <div class="status" id="h-status"></div>
+
+      <div class="hint" style="margin:16px 0 8px">動一動 · 任選一個，做了就按</div>
+      <div class="itemgrid" id="h-movegrid"></div>
+
+      <div class="picker2" id="h-picker" hidden></div>
+
+      <div class="hint" style="margin:18px 0 8px">其他紀錄 · 不算進「今天有動」</div>
+      <div class="itemgrid" id="h-othergrid"></div>
+
+      <button class="addbtn" id="h-addbtn">＋ 自訂項目</button>
+      <div class="addbox" id="h-addbox" hidden>
+        <div class="field">
+          <label for="h-newname">項目名稱</label>
+          <input type="text" id="h-newname" placeholder="例：散步、泡澡、寫日記">
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="h-newunit">怎麼算</label>
+            <select id="h-newunit">
+              <option value="reps">次數</option>
+              <option value="time">時間（分鐘）</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="h-newsug">建議份量（可留空）</label>
+            <input type="text" id="h-newsug" inputmode="decimal" placeholder="例：10">
+          </div>
+        </div>
+        <div class="field">
+          <label for="h-newcat">算不算「今天有動」</label>
+          <select id="h-newcat">
+            <option value="other">只記錄，不算</option>
+            <option value="move">算，這是身體活動</option>
+          </select>
+        </div>
+        <div class="row2">
+          <button class="act ghost" id="h-newcancel">取消</button>
+          <button class="act" id="h-newsave">加進清單</button>
+        </div>
+      </div>
+      <div id="h-manage"></div>
+
+      <div class="hint" style="margin:20px 0 4px">這一天記了什麼</div>
+      <div id="h-donelist"></div>
+    </section>
+
+    <section style="margin-top:26px">
+      <div class="monthbar">
+        <button class="iconbtn" id="h-prev" aria-label="上個月">‹</button>
+        <span id="h-monthlabel"></span>
+        <button class="iconbtn" id="h-next" aria-label="下個月">›</button>
+      </div>
+      <div id="h-calendar"></div>
+      <p class="caltip">點日曆上的任何一天可以<b>補記</b>。斷一天沒事，不要連斷兩天就好。</p>
+      <div class="summary" id="h-summary"></div>
+      <div class="breakdown" id="h-breakdown"></div>
+    </section>
+
+    <footer>
+      <p>這個畫面刻意不顯示連續天數。研究發現連續紀錄斷掉之後，人更可能整個不再打開 App——
+        既然中斷的傷害大於順利時的幫助，那就不要做。看累積就好。</p>
+    </footer>
+
+  </div>
+</div>
+
+<!-- 選單 -->
+<div class="sheet" id="menusheet" hidden>
+  <div class="sheet-in">
+    <div class="sheet-h"><span id="m-who"></span><button class="iconbtn" id="menuclose" aria-label="關閉">×</button></div>
+    <button class="sheet-item" id="m-ladder">
+      <b>完整訓練計畫</b>
+      <span>十條漸進階梯、四天輪替課表、升檔引擎。等每天動一動穩定了再進來。</span>
+    </button>
+    <button class="sheet-item" id="m-export">
+      <b>下載完整備份</b>
+      <span>每日記錄和訓練紀錄一起打包成一個檔案</span>
+    </button>
+    <button class="sheet-item" id="m-signout">
+      <b>登出</b>
+      <span>資料都在雲端，下次登入同一個帳號就會回來</span>
+    </button>
+  </div>
+</div>
+
+<!-- ==================== 完整訓練計畫（收起來） ==================== -->
+<div id="ladderview" hidden>
+
+<div class="bar">
+  <div class="bar-in">
+    <button class="who" id="backbtn">‹ 每日記錄</button>
+    <h1>訓練階梯</h1>
+    <span class="wk" id="wkchip">本週 0 / 4</span>
+  </div>
+</div>
+
 <div class="wrap">
+  <p class="note" id="ladder-loading" hidden>正在載入…</p>
 
   <!-- ============ 訓練 ============ -->
   <div class="panel" id="p-log">
@@ -96,7 +204,7 @@
     <h2>訓練歷程</h2>
     <p class="note">判斷卡關的唯一依據。同一個檔位連續三週沒有多做出任何一下，才叫卡關；只練了三次不叫卡關。</p>
     <div class="card"><div id="histlist"></div></div>
-    <button class="act ghost" id="h-export">下載完整備份（JSON 檔）</button>
+    <button class="act ghost" id="h-export">下載訓練紀錄（JSON 檔）</button>
   </div>
 
   <!-- ============ 檔位 ============ -->
@@ -130,6 +238,18 @@
           <li><b>三組都達到目標次數就升檔</b>，回到 3×5 重新開始。你在「訓練」頁填完三組後，達標會自動跳出升檔按鈕。</li>
           <li><b>每組留 1–3 下餘力</b>，只有最後一組可以逼近力竭。動作變形的那一下不算數。</li>
           <li><b>組間休息</b> 90 秒（力量動作）／ 60 秒（核心）。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h3>做完一個動作的三組，再換下一個</h3></div>
+      <div class="card-b">
+        <ul class="list">
+          <li><b>不要繞圈做。</b>繞圈回到第二組時心肺還沒恢復，次數會掉——但掉的原因是喘不是肌肉，那會讓「多做一下就算進步」失去意義。</li>
+          <li><b>嫌慢可以用配對組</b>：推和拉交替（拉一組 → 休 45 秒 → 推一組 → 休 45 秒 → 回去拉第二組）。兩個動作不是同一群肌肉，次數不會掉但省三分之一時間。</li>
+          <li><b>核心永遠排最後</b>，而且核心的金字塔檔位不要拿去配對。</li>
+          <li><b>結束時應該覺得「還可以再做一點」</b>，而不是「終於結束了」。運動當下的感受會預測半年後你還在不在練。</li>
         </ul>
       </div>
     </div>
@@ -170,7 +290,6 @@
 
     <footer>
       <p>依據 r/bodyweightfitness Recommended Routine 的升級規則、Start Bodyweight 的漸進階梯、Stuart McGill 的核心穩定三式整理，並依你回報的條件調整。我不是醫療或專業體能人員；下背若有既有診斷，開始前請先諮詢物理治療師或醫師，並以他們的建議為準。</p>
-      <p><a href="https://gist.github.com/sgup/f10f1d57e54b7876495f4bafb6d697eb">Recommended Routine</a> · <a href="https://squatuniversity.com/2018/06/21/the-mcgill-big-3-for-core-stability/">McGill Big 3</a> · <a href="https://www.inspireusafoundation.org/pistol-squat-progression/">Pistol Squat Progression</a> · <a href="https://askvora.com/blog/resistance-training-meta-analysis-muscle-growth">Training Volume</a></p>
     </footer>
   </div>
 
@@ -186,11 +305,12 @@
   </div>
 </nav>
 
-</div><!-- /#app -->
+</div><!-- /#ladderview -->
 
-<!-- Supabase 客戶端收在專案裡，不靠 CDN。它是傳統 script，要在 app.js 之前載入 -->
+</div><!-- /#shell -->
+
 <script src="js/vendor/supabase.js"></script>
-<script type="module" src="js/app.js"></script>
+<script type="module" src="js/main.js"></script>
 
 </body>
 </html>

@@ -189,9 +189,109 @@ export async function clearDraft() {
   await sb.from('workout_drafts').delete().eq('user_id', user.id);
 }
 
+// ---------- 每日記錄（習慣追蹤） ----------
+
+/**
+ * 讀一段期間的紀錄。預設抓最近 400 天，足夠畫一整年的日曆。
+ * 刻意不在資料庫存「連續天數」——那是算出來的，而且這個 App
+ * 決定不顯示連續天數（中斷的打擊大於順利時的幫助）。
+ */
+export async function loadHabits(sinceISO) {
+  try {
+    const [logRes, itemRes] = await Promise.all([
+      sb.from('habit_log')
+        .select('id, done_on, item_key, item_name, category, unit, amount')
+        .eq('user_id', user.id)
+        .gte('done_on', sinceISO)
+        .order('done_on', { ascending: false })
+        .order('created_at', { ascending: false }),
+      sb.from('habit_items')
+        .select('id, name, unit, suggested, category, sort')
+        .eq('user_id', user.id)
+        .eq('archived', false)
+        .order('sort', { ascending: true }),
+    ]);
+    if (logRes.error) throw logRes.error;
+    if (itemRes.error) throw itemRes.error;
+    return { log: logRes.data || [], items: itemRes.data || [], offline: false };
+  } catch (e) {
+    onError('讀取紀錄失敗：' + friendly(e));
+    return { log: [], items: [], offline: true };
+  }
+}
+
+/** 按一下就是一列。回傳資料庫產生的 id，失敗回 null */
+export async function addHabit(row) {
+  const { data, error } = await sb.from('habit_log').insert({
+    user_id: user.id,
+    done_on: row.done_on,
+    item_key: row.item_key,
+    item_name: row.item_name || '',
+    category: row.category || 'move',
+    unit: row.unit || 'reps',
+    amount: row.amount == null ? null : row.amount,
+  }).select('id').single();
+  if (error) { onError('沒有記起來：' + friendly(error)); return null; }
+  return data.id;
+}
+
+/** 按錯了可以收回 */
+export async function removeHabit(id) {
+  const { error } = await sb.from('habit_log').delete().eq('id', id).eq('user_id', user.id);
+  if (error) { onError('收回失敗：' + friendly(error)); return false; }
+  return true;
+}
+
+export async function addItem(item) {
+  const { data, error } = await sb.from('habit_items').insert({
+    user_id: user.id,
+    name: item.name,
+    unit: item.unit,
+    suggested: item.suggested == null ? null : item.suggested,
+    category: item.category || 'other',
+    sort: item.sort || 0,
+  }).select('id').single();
+  if (error) { onError('新增項目失敗：' + friendly(error)); return null; }
+  return data.id;
+}
+
+/** 刪項目用封存不用真刪，這樣歷史紀錄裡那幾筆還看得懂 */
+export async function archiveItem(id) {
+  const { error } = await sb.from('habit_items').update({ archived: true })
+    .eq('id', id).eq('user_id', user.id);
+  if (error) { onError('刪除項目失敗：' + friendly(error)); return false; }
+  return true;
+}
+
 // ---------- 匯出備份 ----------
 
-/** 把所有紀錄下載成一個 JSON 檔。雲端出事時這是唯一的救命繩 */
+/** 整包下載：每日記錄 ＋ 訓練階梯。雲端出事時這是唯一的救命繩 */
+export async function exportEverything() {
+  const since = '1970-01-01';
+  const [habits, ladder] = await Promise.all([loadHabits(since), loadAll()]);
+  const payload = {
+    匯出時間: new Date().toISOString(),
+    說明: '自重訓練 App 的完整備份。habit_log 是每日記錄，habit_items 是自訂項目，'
+      + 'tiers 是十條階梯目前的檔位，sessions 是完整訓練計畫的每一次訓練。',
+    habit_log: habits.log,
+    habit_items: habits.items,
+    tiers: ladder.tiers,
+    sessions: ladder.sessions,
+  };
+  download(payload, '訓練備份-' + new Date().toISOString().slice(0, 10) + '.json');
+}
+
+function download(payload, filename) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** 只匯出完整訓練計畫那半邊（從它自己的「歷程」頁按的） */
 export function exportBackup(tiers, sessions) {
   const payload = {
     匯出時間: new Date().toISOString(),

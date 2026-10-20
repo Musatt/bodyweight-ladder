@@ -1,14 +1,14 @@
 {
-  "name": "自重訓練階梯",
-  "short_name": "訓練階梯",
-  "description": "居家自重訓練計畫：十條漸進階梯、四天輪替課表，記錄每組次數並自動判斷升檔。",
+  "name": "今天有動",
+  "short_name": "今天有動",
+  "description": "每天記一下有沒有動。做任何一個項目的任何一下都算數。",
   "lang": "zh-Hant",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#F2F4F6",
-  "theme_color": "#1D4E89",
+  "background_color": "#F3EEE6",
+  "theme_color": "#6B7F5E",
   "icons": [
     { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
