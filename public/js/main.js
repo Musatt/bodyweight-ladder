@@ -14,7 +14,7 @@
 // ============================================================
 
 import * as store from './store.js';
-import { startHabits, refreshHabits } from './habit-app.js';
+import { startHabits, refreshHabits, openGuidePage, openWhyPage } from './habit-app.js';
 
 let ladder = null;      // 動態載入的完整訓練計畫模組
 
@@ -80,6 +80,8 @@ function wireChrome() {
 
   document.getElementById('m-ladder').addEventListener('click', showLadder);
   document.getElementById('backbtn').addEventListener('click', showHabits);
+  document.getElementById('m-guide').addEventListener('click', () => { closeMenu(); openGuidePage(); });
+  document.getElementById('m-why').addEventListener('click', () => { closeMenu(); openWhyPage(); });
 
   document.getElementById('m-export').addEventListener('click', async () => {
     closeMenu();
@@ -122,7 +124,14 @@ async function boot() {
   document.getElementById('m-who').textContent = store.displayName();
 
   wireChrome();
-  await startHabits(showSyncError);
+  await startHabits();
 }
+
+// 切回這個分頁時重新讀一次，手機上記完回電腦就看得到
+document.addEventListener('visibilitychange', () => {
+  if (!document.getElementById('shell').hidden
+      && document.getElementById('habitview').hidden === false
+      && document.visibilityState === 'visible') refreshHabits();
+});
 
 boot();

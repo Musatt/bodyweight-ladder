@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>今天有動</title>
-<meta name="description" content="每天記一下有沒有動。做任何一個項目的任何一下都算數。">
-<meta name="theme-color" content="#F3EEE6" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#1A1713" media="(prefers-color-scheme: dark)">
+<meta name="description" content="每天記一下有沒有動。">
+<meta name="theme-color" content="#EAE3D6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1A1612" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="今天有動">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -35,9 +35,7 @@
     </svg>
     用 Google 登入
   </button>
-  <p class="note" id="gate-why" hidden>
-    登入是為了讓資料庫認得你，確保只有你讀得到自己的紀錄。
-  </p>
+  <p class="note" id="gate-why" hidden>登入是為了讓資料庫認得你，確保只有你讀得到自己的紀錄。</p>
 </div>
 
 <!-- ============ 登入後 ============ -->
@@ -58,101 +56,219 @@
     </div>
   </div>
 
-  <div class="wrap">
+  <!-- ---------- 頁籤一：今天 ---------- -->
+  <div class="wrap tabview" id="v-today">
 
-    <section id="h-today">
-      <div class="dateline">
-        <span id="h-dateline"></span>
-        <button class="linkbtn" id="h-backtoday" hidden>回到今天</button>
+    <div class="status" id="h-status"></div>
+
+    <div class="monthbar">
+      <span id="h-monthlabel"></span>
+      <button class="iconbtn" id="h-prev" aria-label="上個月">‹</button>
+      <button class="iconbtn" id="h-next" aria-label="下個月">›</button>
+    </div>
+    <div id="h-calendar"></div>
+
+    <div class="stats">
+      <div class="stat">
+        <span class="v" id="st-days">0</span>
+        <span class="k">這個月動了幾天</span>
+        <span class="d" id="st-diff"></span>
       </div>
+      <div class="stat">
+        <span class="v" id="st-times">0</span>
+        <span class="k">這個月記了幾次</span>
+        <span class="d" id="st-other"></span>
+      </div>
+    </div>
+    <div class="breakdown" id="h-breakdown"></div>
 
-      <div class="status" id="h-status"></div>
+    <div class="dayhead">
+      <b id="h-dayname"></b>
+      <span id="h-daydate"></span>
+      <button class="addhere" id="h-addhere">＋ 記一筆</button>
+    </div>
+    <div id="h-donelist"></div>
 
-      <div class="hint" style="margin:16px 0 8px">動一動 · 任選一個，做了就按</div>
-      <div class="itemgrid" id="h-movegrid"></div>
+  </div>
 
-      <div class="picker2" id="h-picker" hidden></div>
+  <!-- ---------- 頁籤二：記錄 ---------- -->
+  <div class="wrap tabview" id="v-log" hidden>
 
-      <div class="hint" style="margin:18px 0 8px">其他紀錄 · 不算進「今天有動」</div>
-      <div class="itemgrid" id="h-othergrid"></div>
+    <div class="datefield">
+      <input type="date" id="h-date" aria-label="記錄哪一天">
+      <button class="todaybtn" id="h-datetoday">今天</button>
+    </div>
 
-      <button class="addbtn" id="h-addbtn">＋ 自訂項目</button>
-      <div class="addbox" id="h-addbox" hidden>
+    <div class="grouplabel">動一動</div>
+    <div class="itemgrid" id="h-movegrid"></div>
+
+    <div class="grouplabel">其他（不計入）</div>
+    <div class="itemgrid" id="h-othergrid"></div>
+
+    <button class="addbtn" id="h-addbtn">＋ 自訂項目</button>
+    <div id="h-manage" style="margin-top:14px"></div>
+
+  </div>
+
+  <div class="tabbar">
+    <div class="row" id="h-tabs">
+      <button data-tab="today" aria-selected="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+        <span class="l">今天</span>
+      </button>
+      <button data-tab="log" aria-selected="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <span class="l">記錄</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ---------- 記一次的彈出面板 ---------- -->
+<div class="sheet" id="logsheet" hidden>
+  <div class="sheet-in" role="dialog" aria-modal="true" aria-labelledby="ls-name">
+    <div class="sheet-grab"></div>
+    <div class="sheet-h"><b id="ls-name"></b><button class="x" id="ls-close" aria-label="關閉">×</button></div>
+    <div class="sheet-body" id="ls-body"></div>
+    <div class="sheet-foot" id="ls-foot" hidden>
+      <span id="ls-count"></span>
+      <button class="undo" id="ls-undo">收回上一次</button>
+    </div>
+  </div>
+</div>
+
+<!-- ---------- 自訂項目的彈出面板 ---------- -->
+<div class="sheet" id="newsheet" hidden>
+  <div class="sheet-in" role="dialog" aria-modal="true">
+    <div class="sheet-grab"></div>
+    <div class="sheet-h"><b>自訂項目</b><button class="x" id="ns-close" aria-label="關閉">×</button></div>
+    <div class="sheet-body">
+      <div class="field">
+        <label for="h-newname">名稱</label>
+        <input type="text" id="h-newname" placeholder="例：散步、泡澡、寫日記">
+      </div>
+      <div class="row2">
         <div class="field">
-          <label for="h-newname">項目名稱</label>
-          <input type="text" id="h-newname" placeholder="例：散步、泡澡、寫日記">
-        </div>
-        <div class="row2">
-          <div class="field">
-            <label for="h-newunit">怎麼算</label>
-            <select id="h-newunit">
-              <option value="reps">次數</option>
-              <option value="time">時間（分鐘）</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="h-newsug">建議份量（可留空）</label>
-            <input type="text" id="h-newsug" inputmode="decimal" placeholder="例：10">
-          </div>
-        </div>
-        <div class="field">
-          <label for="h-newcat">算不算「今天有動」</label>
-          <select id="h-newcat">
-            <option value="other">只記錄，不算</option>
-            <option value="move">算，這是身體活動</option>
+          <label for="h-newunit">單位</label>
+          <select id="h-newunit">
+            <option value="reps">次數</option>
+            <option value="time">時間（分鐘）</option>
           </select>
         </div>
-        <div class="row2">
-          <button class="act ghost" id="h-newcancel">取消</button>
-          <button class="act" id="h-newsave">加進清單</button>
+        <div class="field">
+          <label for="h-newsug">一次算多少</label>
+          <input type="text" id="h-newsug" inputmode="decimal" placeholder="10">
         </div>
       </div>
-      <div id="h-manage"></div>
-
-      <div class="hint" style="margin:20px 0 4px">這一天記了什麼</div>
-      <div id="h-donelist"></div>
-    </section>
-
-    <section style="margin-top:26px">
-      <div class="monthbar">
-        <button class="iconbtn" id="h-prev" aria-label="上個月">‹</button>
-        <span id="h-monthlabel"></span>
-        <button class="iconbtn" id="h-next" aria-label="下個月">›</button>
+      <div class="field">
+        <label for="h-newcat">分類</label>
+        <select id="h-newcat">
+          <option value="other">其他（不計入）</option>
+          <option value="move">動一動</option>
+        </select>
       </div>
-      <div id="h-calendar"></div>
-      <p class="caltip">點日曆上的任何一天可以<b>補記</b>。斷一天沒事，不要連斷兩天就好。</p>
-      <div class="summary" id="h-summary"></div>
-      <div class="breakdown" id="h-breakdown"></div>
-    </section>
-
-    <footer>
-      <p>這個畫面刻意不顯示連續天數。研究發現連續紀錄斷掉之後，人更可能整個不再打開 App——
-        既然中斷的傷害大於順利時的幫助，那就不要做。看累積就好。</p>
-    </footer>
-
+      <button class="act" id="h-newsave">加進清單</button>
+    </div>
   </div>
 </div>
 
-<!-- 選單 -->
+<!-- ---------- 選單 ---------- -->
 <div class="sheet" id="menusheet" hidden>
-  <div class="sheet-in">
-    <div class="sheet-h"><span id="m-who"></span><button class="iconbtn" id="menuclose" aria-label="關閉">×</button></div>
+  <div class="sheet-in" role="dialog" aria-modal="true">
+    <div class="sheet-grab"></div>
+    <div class="sheet-h"><b id="m-who"></b><button class="x" id="menuclose" aria-label="關閉">×</button></div>
+    <button class="sheet-item" id="m-guide">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M9 8h6M9 12h4"/></svg>
+      <b>動作說明</b>
+    </button>
+    <button class="sheet-item" id="m-why">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.3 2.4c-.5.2-.8.7-.8 1.2v.4"/><path d="M12 17h.01"/></svg>
+      <b>為什麼這樣設計</b>
+    </button>
     <button class="sheet-item" id="m-ladder">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 21V4M17 21V4M7 8h10M7 13h10M7 18h10"/></svg>
       <b>完整訓練計畫</b>
-      <span>十條漸進階梯、四天輪替課表、升檔引擎。等每天動一動穩定了再進來。</span>
     </button>
     <button class="sheet-item" id="m-export">
-      <b>下載完整備份</b>
-      <span>每日記錄和訓練紀錄一起打包成一個檔案</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 11l4 4 4-4M4 19h16"/></svg>
+      <b>下載備份</b>
     </button>
     <button class="sheet-item" id="m-signout">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M16 16l4-4-4-4M20 12H10"/></svg>
       <b>登出</b>
-      <span>資料都在雲端，下次登入同一個帳號就會回來</span>
     </button>
   </div>
 </div>
 
-<!-- ==================== 完整訓練計畫（收起來） ==================== -->
+<!-- ---------- 動作說明（整頁） ---------- -->
+<div class="pageview" id="guidepage" hidden>
+  <div class="pagehead">
+    <div class="pagehead-in">
+      <button class="backbtn" id="gp-back">‹ 返回</button>
+      <h2>動作說明</h2>
+    </div>
+  </div>
+  <div class="wrap" style="padding-top:16px; padding-bottom:40px" id="gp-list"></div>
+</div>
+
+<!-- ---------- 為什麼這樣設計（整頁） ---------- -->
+<div class="pageview" id="whypage" hidden>
+  <div class="pagehead">
+    <div class="pagehead-in">
+      <button class="backbtn" id="wp-back">‹ 返回</button>
+      <h2>為什麼這樣設計</h2>
+    </div>
+  </div>
+  <div class="wrap" style="padding-top:16px; padding-bottom:40px">
+    <div class="why-sec">
+      <h3>只有一個目標：今天有沒有動</h3>
+      <p>做任何一個「動一動」項目的任何一下，今天就算有動。沒有進度條、沒有及格線。</p>
+      <p>閱讀、冥想這些放在「其他」，會被記錄、會出現在月曆上，但<b>不算進「今天有動」</b>。
+        不然可能連續三十天都達標，卻一次都沒有動過——而體力和力量只有動才會變。</p>
+    </div>
+    <div class="why-sec">
+      <h3>沒有連續天數</h3>
+      <p>這是刻意拿掉的。Silverman &amp; Barasch（2023, <i>Journal of Consumer Research</i>）
+        用一個真實 App 做的研究發現：連續紀錄完好時，66% 的人會繼續；中斷之後只剩 58%。
+        但真正的問題在後面——<b>中斷的人更可能整個不再打開 App</b>。</p>
+      <p>既然中斷造成的傷害大於順利時的幫助，那就不要做。看累積就好。</p>
+    </div>
+    <div class="why-sec">
+      <h3>份量是建議，不是規定</h3>
+      <p>按一下就算一次，沒做到那個數字也算。多一個必填的參數就是多一道摩擦，而摩擦會累積。</p>
+      <p>做的量跟建議差很多的時候再去選實際的數字就好。</p>
+    </div>
+    <div class="why-sec">
+      <h3>需要的量比你想的少</h3>
+      <p>UK Biobank 的穿戴裝置研究發現，平時完全不運動的人每天累積 3.4–3.6 分鐘的
+        短促費力活動，就與癌症發生率低 17–18% 有關聯（觀察性研究，不等於因果）。
+        針對「運動零食」的隨機試驗統合分析也發現，極短的高強度片段對心肺適能
+        有顯著且臨床上有意義的改善。</p>
+      <p>所以「做一組深蹲就算今天有動」不是在哄人。</p>
+    </div>
+    <div class="why-sec">
+      <h3>結束時應該覺得還可以再做一點</h3>
+      <p>Williams 等人（2008、2012）發現，<b>運動當下</b>的感受可以預測 6 個月和 12 個月後
+        還有沒有在練，而且在控制了主觀費力程度之後仍然成立。</p>
+      <p>所以重要的不是那一次練得多重，是練的時候舒不舒服。
+        練到難受會降低下一次想做的意願。</p>
+    </div>
+    <div class="why-sec">
+      <h3>彈性比規律更持久</h3>
+      <p>Beshears、Milkman 等人（2021, <i>Management Science</i>）用 2,508 人做的實地實驗：
+        要求固定時段去健身房的那組，不只在活動期間去得比較少，
+        <b>獎勵停掉之後掉得更兇</b>。</p>
+      <p>所以這裡不規定你哪天做、做什麼、做幾組。</p>
+    </div>
+    <div class="why-sec">
+      <h3>免責</h3>
+      <p>內容依 r/bodyweightfitness Recommended Routine、Start Bodyweight 的漸進階梯、
+        Stuart McGill 的核心穩定三式整理。作者不是醫療或專業體能人員；
+        若下背有既有診斷，開始前請先諮詢物理治療師或醫師，並以他們的建議為準。</p>
+    </div>
+  </div>
+</div>
+
 <div id="ladderview" hidden>
 
 <div class="bar">

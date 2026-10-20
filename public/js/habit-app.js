@@ -1,24 +1,24 @@
 // ============================================================
 //  每日記錄 — 這個 App 的主體
 // ============================================================
-//  設計上有四條規則，都是有來由的，改之前先看一下理由：
+//  畫面架構（2026-10-20 重做）：
 //
-//  1. 只有一個目標：今天有沒有動。
-//     做任一個運動項目的任一下就算數。閱讀、冥想這些會被記錄、
-//     會出現在日曆上，但不算進「今天有動」——不然可能連續三十天
-//     達標卻一次都沒動過，而想改善的體力和力量只有動才會變。
+//    底部頁籤「今天」  打開就看到：今天有沒有動 → 月曆 → 統計 → 選到那天的明細
+//    底部頁籤「記錄」  日期欄 ＋ 項目清單，點項目跳出底部面板
+//    右上角選單        動作說明、為什麼這樣設計、完整訓練計畫、備份、登出
 //
-//  2. 不顯示連續天數，一個字都不顯示。
-//     Silverman & Barasch（2023, JCR）：連續紀錄完好時會推人一把
-//     （66% vs 58%），但中斷的人更可能整個不再使用。既然中斷的
-//     傷害大於順利時的幫助，乾脆不做。主角是日曆和月累積。
+//  三個刻意的決定：
 //
-//  3. 份量是「建議」不是「規定」。
-//     按一下就算一次，沒做到建議份量也算。數字想記再記。
-//     多一個必填參數就是多一道摩擦，而摩擦是會累積的。
+//  1. 記一次用「底部彈出面板」不是就地展開。
+//     就地展開會把下面的東西推走，原本盯著的那一項會跑掉。
 //
-//  4. 可以補記前幾天。
-//     同一份研究說「能補救」會削弱中斷的打擊。
+//  2. 畫面上幾乎沒有說明文字。
+//     操作類的說明看一次就記得了，第二次之後都是雜訊。
+//     觀念類的（為什麼沒有連續天數、要做多少才夠）放在選單的
+//     「為什麼這樣設計」，忘記再去看。
+//
+//  3. 不顯示連續天數，也不寫「斷一天沒事」之類的話。
+//     那句話跟連續天數是同一個意思，一樣會製造壓力。
 // ============================================================
 
 import { BUILTIN, fmtAmount, quickPicks } from './habits.js';
@@ -27,158 +27,65 @@ import * as store from './store.js';
 
 let log = [];          // 最近的紀錄
 let custom = [];       // 使用者自訂的項目
-let viewDate = null;   // 目前在記哪一天（預設今天，可以往回補）
-let monthAnchor = null;// 日曆顯示哪個月
-let openItem = null;   // 展開份量選擇的是哪個項目
-let onSyncError = () => {};
+let selDate = null;    // 「今天」頁選到哪一天
+let logDate = null;    // 「記錄」頁要記到哪一天
+let monthAnchor = null;
+let sheetItem = null;  // 彈出面板開的是哪個項目
+let tab = 'today';
 
 /* ---------- 小工具 ---------- */
+
+const WD = ['日', '一', '二', '三', '四', '五', '六'];
 
 function ymd(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 function today() { return ymd(new Date()); }
+function parseYMD(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
 function esc(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 function $(id) { return document.getElementById(id); }
-function parseYMD(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
 
-/** 內建 ＋ 自訂，合成一份完整的項目清單 */
 function allItems() {
   const mine = custom.map((c) => ({
     key: 'custom:' + c.id, name: c.name, unit: c.unit,
     sug: c.suggested == null ? null : Number(c.suggested),
-    cat: c.category, why: '', custom: true, id: c.id,
+    cat: c.category, custom: true, id: c.id,
   }));
   return BUILTIN.concat(mine);
 }
+function itemByKey(k) { return allItems().filter((x) => x.key === k)[0]; }
 
-function itemsOn(dateStr) { return log.filter((r) => r.done_on === dateStr); }
-function movedOn(dateStr) { return itemsOn(dateStr).some((r) => r.category === 'move'); }
-function anythingOn(dateStr) { return itemsOn(dateStr).length > 0; }
+function rowsOn(d) { return log.filter((r) => r.done_on === d); }
+function movedOn(d) { return rowsOn(d).some((r) => r.category === 'move'); }
+function otherOn(d) { return rowsOn(d).some((r) => r.category === 'other'); }
 
-/* ---------- 今天 ---------- */
+function dayLabel(ds) {
+  const d = parseYMD(ds);
+  if (ds === today()) return '今天';
+  const diff = Math.round((parseYMD(today()) - d) / 864e5);
+  if (diff === 1) return '昨天';
+  return (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日';
+}
 
-function renderToday() {
-  const isToday = viewDate === today();
-  const rows = itemsOn(viewDate);
-  const moved = movedOn(viewDate);
+/* ---------- 頁籤一：今天 ---------- */
 
-  $('h-dateline').textContent = isToday
-    ? '今天 · ' + viewDate
-    : '補記 ' + viewDate;
-  $('h-backtoday').hidden = isToday;
-
-  // 今天有沒有動——整個畫面最重要的一句話
+function renderStatus() {
+  const moved = movedOn(today());
   const st = $('h-status');
   st.className = 'status' + (moved ? ' done' : '');
-  st.innerHTML = moved
-    ? '<span class="big">今天有動 ✓</span><span class="sm">就這樣，夠了。想再做就再按。</span>'
-    : '<span class="big">今天還沒有動</span><span class="sm">做任何一個項目的任何一下，按一下就算數。</span>';
-
-  const items = allItems();
-  const move = items.filter((i) => i.cat === 'move');
-  const other = items.filter((i) => i.cat === 'other');
-
-  $('h-movegrid').innerHTML = move.map(itemBtn).join('');
-  $('h-othergrid').innerHTML = other.length
-    ? other.map(itemBtn).join('')
-    : '<p class="note" style="padding:2px">還沒有其他項目。用下面的「＋ 自訂項目」加。</p>';
-
-  // 展開的份量選擇面板
-  const pick = $('h-picker');
-  if (openItem) {
-    const it = items.filter((x) => x.key === openItem)[0];
-    if (it) {
-      pick.hidden = false;
-      pick.innerHTML = pickerHTML(it);
-      wirePicker(it);
-    } else { openItem = null; pick.hidden = true; }
-  } else { pick.hidden = true; pick.innerHTML = ''; }
-
-  // 這一天做了什麼
-  $('h-donelist').innerHTML = rows.length
-    ? rows.map((r) =>
-      '<div class="doneRow"><span class="dot' + (r.category === 'move' ? '' : ' other') + '"></span>'
-      + '<span class="nm">' + esc(r.item_name || r.item_key) + '</span>'
-      + '<span class="amt">' + esc(fmtAmount(r.unit, r.amount == null ? null : Number(r.amount))) + '</span>'
-      + '<button class="undo" data-undo="' + esc(r.id) + '" title="收回這一筆">×</button></div>').join('')
-    : '<p class="note" style="padding:4px 2px">這一天還沒有紀錄。</p>';
-
-  $('h-donelist').querySelectorAll('[data-undo]').forEach((b) => {
-    b.addEventListener('click', async () => {
-      const id = b.getAttribute('data-undo');
-      const ok = await store.removeHabit(id);
-      if (!ok) return;
-      log = log.filter((x) => String(x.id) !== String(id));
-      renderToday(); renderCalendar(); renderSummary();
-    });
-  });
+  st.innerHTML = '<span class="ring">' + (moved ? '✓' : '·') + '</span>'
+    + '<span class="big">' + (moved ? '今天有動' : '今天還沒有動') + '</span>';
 }
-
-function itemBtn(it) {
-  const n = itemsOn(viewDate).filter((r) => r.item_key === it.key).length;
-  return '<button class="item' + (n ? ' hit' : '') + (openItem === it.key ? ' open' : '') + '" data-item="' + esc(it.key) + '">'
-    + '<span class="nm">' + esc(it.name) + '</span>'
-    + '<span class="sug">' + (it.sug ? '建議 ' + esc(fmtAmount(it.unit, it.sug)) : '隨意') + '</span>'
-    + (n ? '<span class="cnt">' + n + '</span>' : '')
-    + '</button>';
-}
-
-function pickerHTML(it) {
-  const picks = quickPicks(it.unit, it.sug);
-  let h = '<div class="pk-head"><b>' + esc(it.name) + '</b>'
-    + (it.why ? '<span class="why">' + esc(it.why) + '</span>' : '') + '</div>';
-
-  const fig = it.fig ? figureSVG(it.fig[0], it.fig[1]) : null;
-  if (fig) h += '<div class="pk-fig">' + fig + '</div>';
-
-  h += '<button class="pk-main" data-log="">記一次'
-    + (it.sug ? '（建議 ' + esc(fmtAmount(it.unit, it.sug)) + '）' : '') + '</button>';
-
-  h += '<div class="pk-or">做的量跟建議不一樣？直接選實際的：</div><div class="pk-chips">';
-  picks.forEach((v) => {
-    h += '<button class="pk-chip" data-log="' + v + '">' + esc(fmtAmount(it.unit, v)) + '</button>';
-  });
-  h += '</div>';
-  h += '<button class="pk-close">關起來</button>';
-  return h;
-}
-
-function wirePicker(it) {
-  const pick = $('h-picker');
-  pick.querySelectorAll('[data-log]').forEach((b) => {
-    b.addEventListener('click', async () => {
-      const raw = b.getAttribute('data-log');
-      // 「記一次」不帶數字時，就把建議份量當作實際做的量記下來
-      const amount = raw === '' ? (it.sug == null ? null : it.sug) : Number(raw);
-      b.disabled = true;
-      const id = await store.addHabit({
-        done_on: viewDate, item_key: it.key, item_name: it.name,
-        category: it.cat, unit: it.unit, amount,
-      });
-      b.disabled = false;
-      if (!id) return;
-      log.unshift({ id, done_on: viewDate, item_key: it.key, item_name: it.name,
-        category: it.cat, unit: it.unit, amount });
-      openItem = null;
-      renderToday(); renderCalendar(); renderSummary();
-    });
-  });
-  pick.querySelector('.pk-close').addEventListener('click', () => { openItem = null; renderToday(); });
-}
-
-/* ---------- 日曆 ---------- */
 
 function renderCalendar() {
-  const a = monthAnchor;
-  const y = a.getFullYear(), m = a.getMonth();
-  const first = new Date(y, m, 1);
+  const y = monthAnchor.getFullYear(), m = monthAnchor.getMonth();
   const days = new Date(y, m + 1, 0).getDate();
-  const lead = (first.getDay() + 6) % 7;        // 星期一當一週的開始
+  const lead = (new Date(y, m, 1).getDay() + 6) % 7;   // 星期一當一週的開始
 
   $('h-monthlabel').textContent = y + ' 年 ' + (m + 1) + ' 月';
+  $('h-next').disabled = new Date(y, m + 1, 1) > new Date();
 
   let h = '<div class="cal">';
   ['一', '二', '三', '四', '五', '六', '日'].forEach((d) => { h += '<span class="cal-h">' + d + '</span>'; });
@@ -186,178 +93,331 @@ function renderCalendar() {
 
   for (let d = 1; d <= days; d++) {
     const ds = ymd(new Date(y, m, d));
-    const moved = movedOn(ds);
-    const other = !moved && anythingOn(ds);
-    const isToday = ds === today();
-    const isView = ds === viewDate;
-    const future = ds > today();
-    h += '<button class="cal-d' + (moved ? ' moved' : '') + (other ? ' other' : '')
-      + (isToday ? ' today' : '') + (isView ? ' sel' : '') + '"'
-      + (future ? ' disabled' : '') + ' data-day="' + ds + '">'
+    const mv = movedOn(ds), ot = otherOn(ds);
+    h += '<button class="cal-d' + (mv ? ' moved' : (ot ? ' other' : ''))
+      + (ds === today() ? ' today' : '') + (ds === selDate ? ' sel' : '') + '"'
+      + (ds > today() ? ' disabled' : '') + ' data-day="' + ds + '">'
       + '<span class="n">' + d + '</span>'
-      + (moved ? '<span class="pip"></span>' : (other ? '<span class="pip o"></span>' : ''))
-      + '</button>';
+      + '<span class="pips">'
+      + (mv ? '<span class="pip"></span>' : '')
+      + (ot ? '<span class="pip o"></span>' : '')
+      + '</span></button>';
   }
-  h += '</div>';
-  $('h-calendar').innerHTML = h;
+  $('h-calendar').innerHTML = h + '</div>';
 
   $('h-calendar').querySelectorAll('[data-day]').forEach((b) => {
     b.addEventListener('click', () => {
-      viewDate = b.getAttribute('data-day');
-      openItem = null;
-      renderToday(); renderCalendar();
-      $('h-today').scrollIntoView({ block: 'start' });
+      selDate = b.getAttribute('data-day');
+      renderCalendar(); renderDay();
     });
   });
 }
 
-/* ---------- 月結回饋 ---------- */
+function renderStats() {
+  const y = monthAnchor.getFullYear(), m = monthAnchor.getMonth();
+  const inM = (ds, mm) => { const d = parseYMD(ds); return d.getFullYear() === (mm ? mm.getFullYear() : y) && d.getMonth() === (mm ? mm.getMonth() : m); };
 
-/**
- * 有回饋的自我監測比單純記錄有效（2024 統合分析，d=0.29），
- * 所以打完勾不能就沒了，要把累積講回來給你聽。
- */
-function renderSummary() {
-  const a = monthAnchor;
-  const y = a.getFullYear(), m = a.getMonth();
-  const inMonth = (ds) => { const d = parseYMD(ds); return d.getFullYear() === y && d.getMonth() === m; };
+  const movedDays = new Set(log.filter((r) => r.category === 'move' && inM(r.done_on)).map((r) => r.done_on));
+  const times = log.filter((r) => inM(r.done_on)).length;
+  const otherDays = new Set(log.filter((r) => r.category === 'other' && inM(r.done_on)).map((r) => r.done_on));
 
-  const movedDays = new Set(log.filter((r) => r.category === 'move' && inMonth(r.done_on)).map((r) => r.done_on));
-  const otherDays = new Set(log.filter((r) => r.category === 'other' && inMonth(r.done_on)).map((r) => r.done_on));
-
-  // 上個月同樣的算法，拿來比較
   const pm = new Date(y, m - 1, 1);
-  const inPrev = (ds) => { const d = parseYMD(ds); return d.getFullYear() === pm.getFullYear() && d.getMonth() === pm.getMonth(); };
-  const prevMoved = new Set(log.filter((r) => r.category === 'move' && inPrev(r.done_on)).map((r) => r.done_on)).size;
+  const prev = new Set(log.filter((r) => r.category === 'move' && inM(r.done_on, pm)).map((r) => r.done_on)).size;
 
-  const n = movedDays.size;
-  let line = '這個月動了 <b>' + n + '</b> 天';
-  if (prevMoved > 0 || n > 0) {
-    const diff = n - prevMoved;
-    if (prevMoved === 0) line += '（上個月 0 天）';
-    else if (diff > 0) line += '，比上個月多 <b>' + diff + '</b> 天';
-    else if (diff < 0) line += '，比上個月少 ' + (-diff) + ' 天';
-    else line += '，跟上個月一樣';
-  }
-  if (otherDays.size) line += '　·　其他項目 ' + otherDays.size + ' 天';
+  $('st-days').textContent = movedDays.size;
+  const diff = movedDays.size - prev;
+  $('st-diff').textContent = prev === 0 && movedDays.size === 0 ? ''
+    : (diff > 0 ? '比上個月多 ' + diff : (diff < 0 ? '比上個月少 ' + (-diff) : '跟上個月一樣'));
+  $('st-times').textContent = times;
+  $('st-other').textContent = otherDays.size ? '其他 ' + otherDays.size + ' 天' : '';
 
-  $('h-summary').innerHTML = line;
-
-  // 這個月各項目分別做了幾次
   const counts = {};
-  log.filter((r) => inMonth(r.done_on)).forEach((r) => {
-    counts[r.item_name || r.item_key] = (counts[r.item_name || r.item_key] || 0) + 1;
+  log.filter((r) => inM(r.done_on)).forEach((r) => {
+    const k = r.item_name || r.item_key;
+    counts[k] = (counts[k] || 0) + 1;
   });
   const keys = Object.keys(counts).sort((p, q) => counts[q] - counts[p]);
-  $('h-breakdown').innerHTML = keys.length
-    ? keys.map((k) => '<span class="tally">' + esc(k) + ' <b>' + counts[k] + '</b></span>').join('')
-    : '';
+  $('h-breakdown').innerHTML = keys.map((k) =>
+    '<span class="tally">' + esc(k) + ' <b>' + counts[k] + '</b></span>').join('');
 }
 
-/* ---------- 自訂項目 ---------- */
+function renderDay() {
+  $('h-dayname').textContent = dayLabel(selDate);
+  $('h-daydate').textContent = selDate + '（' + WD[parseYMD(selDate).getDay()] + '）';
 
-function wireCustom() {
-  $('h-addbtn').addEventListener('click', () => {
-    const box = $('h-addbox');
-    box.hidden = !box.hidden;
-    if (!box.hidden) $('h-newname').focus();
+  const rows = rowsOn(selDate);
+  $('h-donelist').innerHTML = rows.length
+    ? rows.map((r) =>
+      '<div class="doneRow"><span class="dot' + (r.category === 'move' ? '' : ' other') + '"></span>'
+      + '<span class="nm">' + esc(r.item_name || r.item_key) + '</span>'
+      + '<span class="amt">' + esc(fmtAmount(r.unit, r.amount == null ? null : Number(r.amount))) + '</span>'
+      + '<button class="undo" data-undo="' + esc(r.id) + '" aria-label="收回">×</button></div>').join('')
+    : '<div class="emptyday">沒有紀錄</div>';
+
+  $('h-donelist').querySelectorAll('[data-undo]').forEach((b) => {
+    b.addEventListener('click', () => removeRow(b.getAttribute('data-undo')));
   });
+}
 
-  $('h-newsave').addEventListener('click', async () => {
-    const name = $('h-newname').value.trim();
-    if (!name) { $('h-newname').focus(); return; }
-    const unit = $('h-newunit').value;
-    const rawSug = $('h-newsug').value.trim();
-    let suggested = rawSug === '' ? null : Number(rawSug);
-    if (suggested != null && (!isFinite(suggested) || suggested <= 0)) suggested = null;
-    // 時間一律存秒，但輸入時讓你填「分鐘」比較直覺
-    if (suggested != null && unit === 'time') suggested = Math.round(suggested * 60);
+async function removeRow(id) {
+  const ok = await store.removeHabit(id);
+  if (!ok) return;
+  log = log.filter((x) => String(x.id) !== String(id));
+  renderAll();
+}
 
-    const category = $('h-newcat').value;
-    const btn = $('h-newsave');
-    btn.disabled = true;
-    const id = await store.addItem({ name, unit, suggested, category, sort: custom.length });
-    btn.disabled = false;
-    if (!id) return;
+/* ---------- 頁籤二：記錄 ---------- */
 
-    custom.push({ id, name, unit, suggested, category, sort: custom.length });
-    $('h-newname').value = ''; $('h-newsug').value = '';
-    $('h-addbox').hidden = true;
-    renderToday(); renderManage();
-  });
+function renderLogTab() {
+  $('h-date').value = logDate;
+  $('h-datetoday').hidden = logDate === today();
 
-  $('h-newcancel').addEventListener('click', () => { $('h-addbox').hidden = true; });
+  const items = allItems();
+  const cell = (it) => {
+    const n = rowsOn(logDate).filter((r) => r.item_key === it.key).length;
+    return '<button class="item' + (n ? ' hit' : '') + '" data-item="' + esc(it.key) + '">'
+      + '<span class="nm">' + esc(it.name) + '</span>'
+      + '<span class="sug">' + (it.sug ? esc(fmtAmount(it.unit, it.sug)) : '隨意') + '</span>'
+      + (n ? '<span class="cnt">' + n + '</span>' : '') + '</button>';
+  };
+  $('h-movegrid').innerHTML = items.filter((i) => i.cat === 'move').map(cell).join('');
+  $('h-othergrid').innerHTML = items.filter((i) => i.cat === 'other').map(cell).join('');
+
+  renderManage();
 }
 
 function renderManage() {
   const host = $('h-manage');
-  if (!custom.length) { host.innerHTML = ''; return; }
-  host.innerHTML = '<div class="hint" style="margin-bottom:6px">我加的項目</div>'
-    + custom.map((c) =>
-      '<div class="mrow"><span class="nm">' + esc(c.name) + '</span>'
-      + '<span class="meta">' + (c.category === 'move' ? '算進今天有動' : '只記錄')
-      + ' · ' + (c.unit === 'reps' ? '次數' : '時間') + '</span>'
-      + '<button class="del" data-del="' + esc(c.id) + '">刪除</button></div>').join('');
+  host.innerHTML = custom.map((c) =>
+    '<div class="mrow"><span class="nm">' + esc(c.name) + '</span>'
+    + '<span class="meta">' + (c.category === 'move' ? '動一動' : '其他') + '</span>'
+    + '<button class="del" data-del="' + esc(c.id) + '">刪除</button></div>').join('');
 
   host.querySelectorAll('[data-del]').forEach((b) => {
     b.addEventListener('click', async () => {
       const id = b.getAttribute('data-del');
       const c = custom.filter((x) => String(x.id) === String(id))[0];
-      if (!c) return;
-      if (!confirm('刪掉「' + c.name + '」？\n\n已經記過的紀錄會留著，只是以後不會出現在清單裡。')) return;
-      const ok = await store.archiveItem(id);
-      if (!ok) return;
+      if (!c || !confirm('刪掉「' + c.name + '」？已經記過的紀錄會留著。')) return;
+      if (!await store.archiveItem(id)) return;
       custom = custom.filter((x) => String(x.id) !== String(id));
-      renderToday(); renderManage();
+      renderAll();
+    });
+  });
+}
+
+/* ---------- 記一次的彈出面板 ---------- */
+
+function openSheet(key, dateStr) {
+  const it = itemByKey(key);
+  if (!it) return;
+  sheetItem = { it, date: dateStr };
+  $('ls-name').textContent = it.name;
+  paintSheet();
+  $('logsheet').hidden = false;
+}
+
+function paintSheet() {
+  const { it, date } = sheetItem;
+  const mine = rowsOn(date).filter((r) => r.item_key === it.key);
+
+  let h = '<button class="pk-main" data-log="">記一次'
+    + (it.sug ? '　' + esc(fmtAmount(it.unit, it.sug)) : '') + '</button>';
+
+  h += '<div class="pk-chips">';
+  quickPicks(it.unit, it.sug).forEach((v) => {
+    h += '<button class="pk-chip" data-log="' + v + '">' + esc(fmtAmount(it.unit, v)) + '</button>';
+  });
+  h += '<button class="pk-chip free" id="ls-freebtn">自己填</button></div>';
+  h += '<div class="freerow" id="ls-freerow" hidden>'
+    + '<input type="text" id="ls-free" inputmode="decimal" placeholder="'
+    + (it.unit === 'reps' ? '幾下' : '幾分鐘') + '">'
+    + '<button id="ls-freeok">確定</button></div>';
+
+  $('ls-body').innerHTML = h;
+
+  $('ls-foot').hidden = !mine.length;
+  if (mine.length) {
+    $('ls-count').textContent = dayLabel(date) + '已記 ' + mine.length + ' 次';
+  }
+
+  $('ls-body').querySelectorAll('[data-log]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const raw = b.getAttribute('data-log');
+      doLog(raw === '' ? (it.sug == null ? null : it.sug) : Number(raw));
+    });
+  });
+  $('ls-freebtn').addEventListener('click', () => {
+    $('ls-freerow').hidden = false;
+    $('ls-free').focus();
+  });
+  $('ls-freeok').addEventListener('click', submitFree);
+  $('ls-free').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitFree(); });
+}
+
+function submitFree() {
+  const { it } = sheetItem;
+  let v = Number($('ls-free').value.trim());
+  if (!isFinite(v) || v <= 0) { $('ls-free').focus(); return; }
+  if (it.unit === 'time') v = Math.round(v * 60);   // 輸入分鐘，存秒
+  doLog(Math.round(v));
+}
+
+async function doLog(amount) {
+  const { it, date } = sheetItem;
+  const id = await store.addHabit({
+    done_on: date, item_key: it.key, item_name: it.name,
+    category: it.cat, unit: it.unit, amount,
+  });
+  if (!id) return;
+  log.unshift({ id, done_on: date, item_key: it.key, item_name: it.name,
+    category: it.cat, unit: it.unit, amount });
+  closeSheet();
+  renderAll();
+}
+
+function closeSheet() { $('logsheet').hidden = true; sheetItem = null; }
+
+/* ---------- 頁籤切換 ---------- */
+
+function switchTab(t) {
+  tab = t;
+  $('v-today').hidden = t !== 'today';
+  $('v-log').hidden = t !== 'log';
+  $('h-tabs').querySelectorAll('button').forEach((b) => {
+    b.setAttribute('aria-selected', b.getAttribute('data-tab') === t ? 'true' : 'false');
+  });
+  window.scrollTo(0, 0);
+}
+
+/* ---------- 整頁：動作說明 ---------- */
+
+function renderGuide() {
+  const items = BUILTIN.filter((i) => i.guide && i.guide.how);
+  $('gp-list').innerHTML = items.map((it, i) => {
+    const g = it.guide;
+    const fig = it.fig ? figureSVG(it.fig[0], it.fig[1]) : null;
+    return '<div class="guide-item">'
+      + '<button class="guide-h" data-g="' + i + '">'
+      + '<span class="nm">' + esc(it.name) + '</span>'
+      + '<span class="amt">' + esc(fmtAmount(it.unit, it.sug)) + '</span>'
+      + '<span class="car">展開</span></button>'
+      + '<div class="guide-b" hidden data-gb="' + i + '">'
+      + (fig ? '<div class="guide-fig">' + fig + '</div>' : '')
+      + '<p class="guide-note">' + g.what + '</p>'
+      + '<div class="guide-sec"><h4>怎麼做</h4><ol>'
+      + g.how.map((s) => '<li>' + s + '</li>').join('') + '</ol></div>'
+      + '<div class="guide-sec"><h4>要點</h4><ul>'
+      + g.key.map((s) => '<li>' + s + '</li>').join('') + '</ul></div>'
+      + '<div class="guide-sec bad"><h4>常見錯誤</h4><ul>'
+      + g.bad.map((s) => '<li>' + esc(s) + '</li>').join('') + '</ul></div>'
+      + '</div></div>';
+  }).join('');
+
+  $('gp-list').querySelectorAll('[data-g]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const i = b.getAttribute('data-g');
+      const body = document.querySelector('[data-gb="' + i + '"]');
+      body.hidden = !body.hidden;
+      b.querySelector('.car').textContent = body.hidden ? '展開' : '收合';
     });
   });
 }
 
 /* ---------- 啟動 ---------- */
 
-function wireChrome() {
+function renderAll() {
+  renderStatus(); renderCalendar(); renderStats(); renderDay(); renderLogTab();
+}
+
+function wire() {
+  $('h-tabs').querySelectorAll('button').forEach((b) => {
+    b.addEventListener('click', () => switchTab(b.getAttribute('data-tab')));
+  });
+
   $('h-prev').addEventListener('click', () => {
     monthAnchor = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() - 1, 1);
-    renderCalendar(); renderSummary();
+    renderCalendar(); renderStats();
   });
   $('h-next').addEventListener('click', () => {
     const n = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + 1, 1);
     if (n > new Date()) return;
-    monthAnchor = n; renderCalendar(); renderSummary();
-  });
-  $('h-backtoday').addEventListener('click', () => {
-    viewDate = today();
-    monthAnchor = new Date();
-    openItem = null;
-    renderToday(); renderCalendar(); renderSummary();
+    monthAnchor = n; renderCalendar(); renderStats();
   });
 
-  $('h-movegrid').addEventListener('click', onItemClick);
-  $('h-othergrid').addEventListener('click', onItemClick);
+  // 從「今天」頁選到的那一天直接去記一筆
+  $('h-addhere').addEventListener('click', () => {
+    logDate = selDate;
+    switchTab('log');
+    renderLogTab();
+  });
+
+  $('h-date').addEventListener('change', (e) => {
+    logDate = e.target.value || today();
+    if (logDate > today()) logDate = today();
+    renderLogTab();
+  });
+  $('h-datetoday').addEventListener('click', () => { logDate = today(); renderLogTab(); });
+
+  [['h-movegrid'], ['h-othergrid']].forEach(([id]) => {
+    $(id).addEventListener('click', (e) => {
+      const b = e.target.closest('[data-item]');
+      if (b) openSheet(b.getAttribute('data-item'), logDate);
+    });
+  });
+
+  $('ls-close').addEventListener('click', closeSheet);
+  $('logsheet').addEventListener('click', (e) => { if (e.target.id === 'logsheet') closeSheet(); });
+  $('ls-undo').addEventListener('click', async () => {
+    const mine = rowsOn(sheetItem.date).filter((r) => r.item_key === sheetItem.it.key);
+    if (!mine.length) return;
+    const ok = await store.removeHabit(mine[0].id);
+    if (!ok) return;
+    log = log.filter((x) => String(x.id) !== String(mine[0].id));
+    paintSheet(); renderAll();
+  });
+
+  // 自訂項目
+  $('h-addbtn').addEventListener('click', () => { $('newsheet').hidden = false; $('h-newname').focus(); });
+  $('ns-close').addEventListener('click', () => { $('newsheet').hidden = true; });
+  $('newsheet').addEventListener('click', (e) => { if (e.target.id === 'newsheet') $('newsheet').hidden = true; });
+  $('h-newsave').addEventListener('click', async () => {
+    const name = $('h-newname').value.trim();
+    if (!name) { $('h-newname').focus(); return; }
+    const unit = $('h-newunit').value;
+    let sug = $('h-newsug').value.trim() === '' ? null : Number($('h-newsug').value);
+    if (sug != null && (!isFinite(sug) || sug <= 0)) sug = null;
+    if (sug != null && unit === 'time') sug = Math.round(sug * 60);
+    const category = $('h-newcat').value;
+
+    const id = await store.addItem({ name, unit, suggested: sug, category, sort: custom.length });
+    if (!id) return;
+    custom.push({ id, name, unit, suggested: sug, category, sort: custom.length });
+    $('h-newname').value = ''; $('h-newsug').value = '';
+    $('newsheet').hidden = true;
+    renderAll();
+  });
+
+  // 動作說明那一頁
+  $('gp-back').addEventListener('click', () => { $('guidepage').hidden = true; });
+  $('wp-back').addEventListener('click', () => { $('whypage').hidden = true; });
 }
 
-function onItemClick(e) {
-  const b = e.target.closest('[data-item]');
-  if (!b) return;
-  const k = b.getAttribute('data-item');
-  openItem = (openItem === k) ? null : k;
-  renderToday();
-  if (openItem) $('h-picker').scrollIntoView({ block: 'nearest' });
-}
+export function openGuidePage() { renderGuide(); $('guidepage').hidden = false; window.scrollTo(0, 0); }
+export function openWhyPage() { $('whypage').hidden = false; window.scrollTo(0, 0); }
 
 export async function refreshHabits() {
   const since = ymd(new Date(Date.now() - 400 * 864e5));
   const res = await store.loadHabits(since);
   log = res.log.map((r) => Object.assign({}, r));
   custom = res.items.map((r) => Object.assign({}, r));
-  renderToday(); renderCalendar(); renderSummary(); renderManage();
+  renderAll();
 }
 
 let wired = false;
-export async function startHabits(errorHandler) {
-  if (typeof errorHandler === 'function') onSyncError = errorHandler;
-  viewDate = today();
+export async function startHabits() {
+  selDate = today();
+  logDate = today();
   monthAnchor = new Date();
-  if (!wired) { wireChrome(); wireCustom(); wired = true; }
+  if (!wired) { wire(); wired = true; }
   await refreshHabits();
 }
