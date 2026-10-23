@@ -138,10 +138,12 @@ function renderDay() {
   const rows = rowsOn(selDate);
   $('h-donelist').innerHTML = rows.length
     ? rows.map((r) =>
-      '<div class="doneRow"><span class="dot' + (r.category === 'move' ? '' : ' other') + '"></span>'
+      '<div class="doneRow' + (r.pending ? ' pending' : '') + '">'
+      + '<span class="dot' + (r.category === 'move' ? '' : ' other') + '"></span>'
       + '<span class="nm">' + esc(r.item_name || r.item_key) + '</span>'
       + '<span class="amt">' + esc(fmtAmount(r.unit, r.amount == null ? null : Number(r.amount))) + '</span>'
-      + '<button class="undo" data-undo="' + esc(r.id) + '" aria-label="收回">×</button></div>').join('')
+      + (r.pending ? '' : '<button class="undo" data-undo="' + esc(r.id) + '" aria-label="收回">×</button>')
+      + '</div>').join('')
     : '<div class="emptyday">沒有紀錄</div>';
 
   $('h-donelist').querySelectorAll('[data-undo]').forEach((b) => {
@@ -149,11 +151,21 @@ function renderDay() {
   });
 }
 
+/** 收回一筆。一樣先從畫面拿掉，失敗再放回去 */
 async function removeRow(id) {
-  const ok = await store.removeHabit(id);
-  if (!ok) return;
+  // 還在送出途中的那筆（id 還是暫時的）不給刪，不然伺服器那邊會對不上。
+  // 這個狀態只有零點幾秒，畫面上那一列不會有 × 可以按
+  if (String(id).startsWith('tmp-')) return;
+
+  const idx = log.findIndex((x) => String(x.id) === String(id));
+  if (idx < 0) return;
+  const backup = log[idx];
+
   log = log.filter((x) => String(x.id) !== String(id));
   renderAll();
+
+  const ok = await store.removeHabit(id);
+  if (!ok) { log.splice(idx, 0, backup); renderAll(); }
 }
 
 /* ---------- 頁籤二：記錄 ---------- */
@@ -252,16 +264,41 @@ function submitFree() {
   doLog(Math.round(v));
 }
 
+/**
+ * 記一次。
+ *
+ * 刻意「先更新畫面、再送去存」（optimistic UI）。
+ * 以前是 await 等伺服器回話才關面板，雖然網路只有 0.2 秒、第一次 1.1 秒，
+ * 但面板愣在那裡不動，感覺就像當掉。
+ *
+ * 失敗的話把剛剛那筆從畫面上收回來，並且跳紅色橫幅——
+ * 不會留下一筆其實沒存進去的紀錄騙自己。
+ */
 async function doLog(amount) {
   const { it, date } = sheetItem;
+  const tmpId = 'tmp-' + Date.now() + Math.random().toString(36).slice(2, 6);
+  const row = {
+    id: tmpId, done_on: date, item_key: it.key, item_name: it.name,
+    category: it.cat, unit: it.unit, amount, pending: true,
+  };
+
+  log.unshift(row);
+  closeSheet();
+  renderAll();                       // ← 畫面立刻就動，不等伺服器
+
   const id = await store.addHabit({
     done_on: date, item_key: it.key, item_name: it.name,
     category: it.cat, unit: it.unit, amount,
   });
-  if (!id) return;
-  log.unshift({ id, done_on: date, item_key: it.key, item_name: it.name,
-    category: it.cat, unit: it.unit, amount });
-  closeSheet();
+
+  if (!id) {
+    log = log.filter((x) => x.id !== tmpId);
+    renderAll();
+    return;
+  }
+  // 換成資料庫給的真 id，不然之後刪不掉
+  row.id = id;
+  row.pending = false;
   renderAll();
 }
 

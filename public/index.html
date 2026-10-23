@@ -12,6 +12,9 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="manifest" href="manifest.webmanifest">
+<!-- 在網頁載入時就先跟資料庫握好手。少了這行，第一次按「記一次」要先花
+     約 0.8 秒做 TLS 握手，感覺就像當掉（2026-10-23 實測） -->
+<link rel="preconnect" href="https://lvhfwadbaxniuyryrngz.supabase.co" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
