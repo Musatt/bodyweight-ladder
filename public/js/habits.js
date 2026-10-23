@@ -28,6 +28,7 @@
 export const BUILTIN = [
   {
     key: 'squat', name: '深蹲', unit: 'reps', sug: 10, cat: 'move', fig: ['squat', 1],
+    video: { id: 'EzDxwv3wASY', title: '基本深蹲 4 要點｜正確姿勢不傷膝', ch: 'Gladys Fit Life' },
     guide: {
       what: '站著把身體蹲下去再站起來。練到大腿前側和臀部——身上最大的兩塊肌群，'
         + '所以它是投資報酬率最高的一個動作，而且不需要任何東西。',
@@ -48,6 +49,7 @@ export const BUILTIN = [
   },
   {
     key: 'bridge', name: '臀橋', unit: 'reps', sug: 12, cat: 'move', fig: ['hinge', 0],
+    video: { id: 'uz1EYLh37A0', title: '臀肌訓練 bridge exercise', ch: '全人物理治療所' },
     guide: {
       what: '躺著把屁股推起來。練臀部和腿後側。久坐會讓臀部變弱、腰被迫代償，'
         + '所以這個動作對久坐之後的下背痠是最直接的一個。',
@@ -67,6 +69,7 @@ export const BUILTIN = [
   },
   {
     key: 'incline', name: '斜面伏地挺身', unit: 'reps', sug: 8, cat: 'move', fig: ['hpush', 2],
+    video: { id: 'Vw9XN4XRedY', title: '伏地挺身太難？上斜伏地挺身任你調整難度', ch: '健身教練示範' },
     guide: {
       what: '手撐在高一點的地方做伏地挺身。練胸、肩膀前側和手臂後側。'
         + '<b>撐得越高越輕鬆</b>，所以這是伏地挺身唯一正確的入門方式——'
@@ -89,6 +92,7 @@ export const BUILTIN = [
   },
   {
     key: 'birddog', name: '鳥狗', unit: 'reps', sug: 5, cat: 'move', fig: ['stab', 0],
+    video: { id: 'FH81s7V0sYc', title: '徒手可以做的核心三大運動 3｜鳥狗式', ch: 'Summer 教練' },
     guide: {
       what: '四足跪姿，伸出對角線的一手一腳。它練的不是「動」，是<b>「不要動」</b>——'
         + '讓你的軀幹在手腳亂動時維持穩定。這是保護下背最實用的一個動作，而且幾乎不會累。',
@@ -109,6 +113,7 @@ export const BUILTIN = [
   },
   {
     key: 'hang', name: '死掛', unit: 'time', sug: 30, cat: 'move', fig: ['vpull', 1],
+    video: { id: 'gLq7Xqjdz8M', title: '吊單槓肩胛下壓 Dead Hang Depression', ch: 'crazer calisthenics' },
     guide: {
       what: '抓住單槓把自己掛著，什麼都不做。練握力和肩關節的耐受度，'
         + '同時讓脊椎被自己的體重拉開、減壓。<b>這是整份清單裡最省事的一項</b>，'
@@ -129,6 +134,7 @@ export const BUILTIN = [
   },
   {
     key: 'hipstretch', name: '髖屈肌伸展', unit: 'time', sug: 60, cat: 'move',
+    video: { id: 'LvUUoiisZP8', title: '拯救骨盆前傾的重要拉筋：髖屈肌伸展', ch: '全人物理治療所' },
     guide: {
       what: '伸展大腿根部前側。久坐時這塊肌肉一直處在縮短的狀態，'
         + '它緊的時候會把骨盆往前拉、腰被迫反弓，這是久坐腰痠很常見的一條路徑。',
@@ -148,6 +154,7 @@ export const BUILTIN = [
   },
   {
     key: 'chest', name: '胸椎伸展', unit: 'time', sug: 60, cat: 'move',
+    video: { id: 'VVLBztv8YGY', title: '滾筒伸展－胸椎活動度', ch: '小K訓練日常' },
     guide: {
       what: '把上背（胸椎）往反方向打開。久坐會讓上背圓、肩膀往前捲，'
         + '這個動作是它的解藥。沒有器材的版本用一條捲起來的毛巾或瑜珈墊就可以。',

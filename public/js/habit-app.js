@@ -22,7 +22,7 @@
 // ============================================================
 
 import { BUILTIN, fmtAmount, quickPicks } from './habits.js';
-import { figureSVG } from './figures.js';
+import { figureSVG, guideFigure } from './figures.js';
 import * as store from './store.js';
 
 let log = [];          // 最近的紀錄
@@ -322,7 +322,10 @@ function renderGuide() {
   const items = BUILTIN.filter((i) => i.guide && i.guide.how);
   $('gp-list').innerHTML = items.map((it, i) => {
     const g = it.guide;
-    const fig = it.fig ? figureSVG(it.fig[0], it.fig[1]) : null;
+    // 優先用「起始／結束」兩格對照圖，沒畫的話退回單張姿勢圖
+    const fig = guideFigure(it.key) || (it.fig ? figureSVG(it.fig[0], it.fig[1]) : null);
+    const v = it.video;
+
     return '<div class="guide-item">'
       + '<button class="guide-h" data-g="' + i + '">'
       + '<span class="nm">' + esc(it.name) + '</span>'
@@ -337,6 +340,11 @@ function renderGuide() {
       + g.key.map((s) => '<li>' + s + '</li>').join('') + '</ul></div>'
       + '<div class="guide-sec bad"><h4>常見錯誤</h4><ul>'
       + g.bad.map((s) => '<li>' + esc(s) + '</li>').join('') + '</ul></div>'
+      + (v ? '<a class="vlink" href="https://www.youtube.com/watch?v=' + esc(v.id)
+          + '" target="_blank" rel="noopener noreferrer">'
+          + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z"/><path d="M10.5 9.2v5.6l4.6-2.8z"/></svg>'
+          + '<span class="t">' + esc(v.title) + '<span class="ch">' + esc(v.ch) + '</span></span>'
+          + '<span class="go">↗</span></a>' : '')
       + '</div></div>';
   }).join('');
 

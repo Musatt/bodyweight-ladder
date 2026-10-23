@@ -422,6 +422,28 @@ select {
 .guide-b[hidden] { display: none; }
 .guide-fig { display: flex; justify-content: center; }
 .guide-fig .figsvg { width: 190px; height: 120px; }
+/* 起始／結束兩格對照圖，撐滿寬度 */
+.guide-fig .figsvg-wide { width: 100%; height: auto; max-width: 420px; padding: 8px 6px; }
+.figsvg .f-step { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.figsvg .f-label {
+  font-family: var(--mono); font-size: 9.5px; fill: var(--ink-3);
+  text-anchor: middle; stroke: none;
+}
+
+/* 影片連結 */
+.vlink {
+  display: flex; align-items: center; gap: 12px; text-decoration: none;
+  padding: 13px 14px; border-radius: var(--r);
+  background: var(--surface-2); color: var(--ink);
+  transition: background-color .15s ease, transform .08s ease;
+}
+@media (hover: hover) { .vlink:hover { background: var(--accent-soft); } }
+.vlink:active { transform: scale(.99); }
+.vlink svg { width: 22px; height: 22px; flex: none; fill: none; stroke: var(--clay); stroke-width: 1.7; stroke-linejoin: round; }
+.vlink svg path:last-child { fill: var(--clay); stroke: none; }
+.vlink .t { font-size: 13.5px; line-height: 1.5; display: flex; flex-direction: column; gap: 2px; }
+.vlink .ch { font-family: var(--mono); font-size: 11px; color: var(--ink-3); }
+.vlink .go { margin-left: auto; color: var(--ink-3); font-size: 15px; }
 .guide-sec h4 {
   font-family: var(--mono); font-size: 10.5px; letter-spacing: .13em; text-transform: uppercase;
   color: var(--ink-3); margin: 0 0 7px;
