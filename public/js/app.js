@@ -13,6 +13,7 @@
 
 import { PYR, LADDERS, DAYS, DAYORDER, GROUPS, WARMUP, L } from './data.js';
 import { figureSVG } from './figures.js';
+import { ymd, today, parseYMD } from './day.js';
 import * as store from './store.js';
 
 /* ================= 狀態 ================= */
@@ -28,10 +29,6 @@ const scrollPos = { log: 0, hist: 0, tier: 0, week: 0, rule: 0 };
 
 /* ================= 小工具 ================= */
 
-function ymd(dd) {
-  return dd.getFullYear() + '-' + String(dd.getMonth() + 1).padStart(2, '0') + '-' + String(dd.getDate()).padStart(2, '0');
-}
-function today() { return ymd(new Date()); }
 function esc(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
@@ -528,7 +525,9 @@ function renderHist() {
 }
 
 function paintWeekChip() {
-  const now = new Date();
+  // 從「邏輯上的今天」算起，不是系統時間——
+  // 不然週一凌晨 1 點練完會被算進新的一週
+  const now = parseYMD(today());
   const dow = (now.getDay() + 6) % 7;       // 讓星期一當一週的開始
   const mon = ymd(new Date(now.getTime() - dow * 864e5));
   const n = sessions.filter((e) => e.d >= mon).length;

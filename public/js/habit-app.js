@@ -23,6 +23,7 @@
 
 import { BUILTIN, fmtAmount, quickPicks } from './habits.js';
 import { figureSVG, guideFigure } from './figures.js';
+import { ymd, today, parseYMD, inGraceWindow, DAY_START_HOUR } from './day.js';
 import * as store from './store.js';
 
 let log = [];          // 最近的紀錄
@@ -37,11 +38,6 @@ let tab = 'today';
 
 const WD = ['日', '一', '二', '三', '四', '五', '六'];
 
-function ymd(d) {
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-}
-function today() { return ymd(new Date()); }
-function parseYMD(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
 function esc(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
@@ -77,7 +73,9 @@ function renderCalendar() {
   const lead = (new Date(y, m, 1).getDay() + 6) % 7;   // 星期一當一週的開始
 
   $('h-monthlabel').textContent = y + ' 年 ' + (m + 1) + ' 月';
-  $('h-next').disabled = new Date(y, m + 1, 1) > new Date();
+  // 比的是「邏輯上的今天」，不是系統時間——凌晨三點前還算前一天，
+  // 所以 11/1 凌晨 1 點時，11 月那一頁還不該能翻過去
+  $('h-next').disabled = new Date(y, m + 1, 1) > parseYMD(today());
 
   let h = '<div class="cal">';
   ['一', '二', '三', '四', '五', '六', '日'].forEach((d) => { h += '<span class="cal-h">' + d + '</span>'; });
@@ -360,8 +358,25 @@ function renderGuide() {
 
 /* ---------- 啟動 ---------- */
 
+/**
+ * 凌晨 0 點到 3 點之間，畫面上的日期會是「昨天」。
+ * 那段時間不講一句的話，看起來就像壞掉，所以只在那個區間顯示提示；
+ * 其他時候一個字都不出現。
+ */
+function paintGraceTip() {
+  const on = inGraceWindow();
+  const msg = '現在還算 ' + today().slice(5).replace('-', '/')
+    + '　·　凌晨 ' + DAY_START_HOUR + ' 點才換日';
+  ['h-grace1', 'h-grace2'].forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    el.hidden = !on;
+    if (on) el.textContent = msg;
+  });
+}
+
 function renderAll() {
-  renderCalendar(); renderStats(); renderDay(); renderLogTab();
+  renderCalendar(); renderStats(); renderDay(); renderLogTab(); paintGraceTip();
 }
 
 function wire() {
@@ -375,7 +390,7 @@ function wire() {
   });
   $('h-next').addEventListener('click', () => {
     const n = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + 1, 1);
-    if (n > new Date()) return;
+    if (n > parseYMD(today())) return;
     monthAnchor = n; renderCalendar(); renderStats();
   });
 
@@ -452,7 +467,9 @@ let wired = false;
 export async function startHabits() {
   selDate = today();
   logDate = today();
-  monthAnchor = new Date();
+  // 月曆也要跟著「邏輯上的今天」，不然 11/1 凌晨打開會跳到 11 月，
+  // 但今天其實還算 10/31
+  monthAnchor = parseYMD(today());
   if (!wired) { wire(); wired = true; }
   await refreshHabits();
 }

@@ -243,6 +243,13 @@ body {
 .doneRow.pending { opacity: .5; }
 .emptyday { padding: 18px 2px; color: var(--ink-3); font-size: 13.5px; }
 
+/* 只在凌晨 0–3 點出現的提示。其他時候完全不顯示 */
+.gracetip {
+  margin: 14px 0 0; padding: 10px 13px;
+  background: var(--surface-2); border-radius: 10px;
+  font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); line-height: 1.6;
+}
+
 /* ---- 記錄頁 ---- */
 .datefield {
   display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
