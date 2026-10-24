@@ -59,6 +59,12 @@ function props(list) {
     } else if (kind === 'roll') {
       // 捲起來的毛巾／滾筒，從側面看就是一個圓
       s += `<circle cx="${a}" cy="${b}" r="6" class="f-prop"/>`;
+    } else if (kind === 'vline') {
+      // 一條垂直的參考線。收下巴那張用它來指出「頭在肩膀前面還是正上方」
+      s += `<line x1="${a}" y1="${b}" x2="${a}" y2="${c}" class="f-ref"/>`;
+    } else if (kind === 'left') {
+      s += `<line x1="${a}" y1="${b}" x2="${a - 20}" y2="${b}" class="f-arrow"/>`
+        +  `<polyline points="${a - 13},${b - 4} ${a - 20},${b} ${a - 13},${b + 4}" class="f-arrow"/>`;
     }
   }
   return s;
@@ -82,8 +88,9 @@ function draw(p) {
     s += `<polyline points="${p.hip[0]},${p.hip[1]} ${kn[0]},${kn[1]} ${an[0]},${an[1]}${toe ? ' ' + toe[0] + ',' + toe[1] : ''}" class="f-limb"/>`;
   }
 
-  // 頭最後畫，才會蓋在脖子上面
-  s += `<circle cx="${hx}" cy="${hy}" r="7" class="f-head"/>`;
+  // 頭最後畫，才會蓋在脖子上面。
+  // hr 可以把頭畫大一點，給「收下巴」那種需要看清楚頭頸關係的近景圖用
+  s += `<circle cx="${hx}" cy="${hy}" r="${p.hr || 7}" class="f-head"/>`;
   return s;
 }
 
@@ -446,6 +453,24 @@ const GUIDE = {
       arms: [[[96, 44], [100, 56]]],
       legs: [[[112, 66], [112, 94], [124, 96]], [[62, 74], [38, 94], [30, 96]]],
       props: [['ground'], ['right', 58, 50]],
+    },
+  },
+
+  // 收下巴是近景：只畫上半身、頭畫大一點，
+  // 再加一條穿過肩膀的垂直參考線——頭在線的前面還是正上方，一眼就分得出來
+  chintuck: {
+    la: '起始 · 頭在肩膀前面', lb: '結束 · 下巴水平後收',
+    a: {
+      head: [96, 30], sh: [74, 58], hip: [70, 100], hr: 11,
+      arms: [[[86, 76], [92, 94]]],
+      legs: [],
+      props: [['vline', 74, 14, 100]],
+    },
+    b: {
+      head: [79, 28], sh: [74, 58], hip: [70, 100], hr: 11,
+      arms: [[[86, 76], [92, 94]]],
+      legs: [],
+      props: [['vline', 74, 14, 100], ['left', 104, 30]],
     },
   },
 
