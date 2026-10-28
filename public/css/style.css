@@ -461,26 +461,69 @@ select {
 .guide-sec.bad li::marker { color: var(--bad); }
 .guide-note { font-size: 13.5px; line-height: 1.75; color: var(--ink-2); margin: 0; }
 
-/* 練到哪裡。綠＝做對的感覺，陶土＝感覺不對，顏色跟 App 其他地方的語意一致 */
-.muscle {
-  background: var(--surface-2); border-radius: var(--r);
-  padding: 14px 15px; display: flex; flex-direction: column; gap: 9px;
+/* ---- 動作分類 ---- */
+.typehead {
+  margin: 26px 0 10px; padding: 13px 15px;
+  background: var(--accent-soft); border-radius: var(--r);
+  display: flex; flex-direction: column; gap: 3px;
 }
-.mu-row { display: flex; gap: 10px; align-items: baseline; font-size: 13.5px; line-height: 1.65; }
-.mu-row .k {
-  font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
-  color: var(--ink-3); flex: none; width: 30px; padding-top: 2px;
+.typehead:first-child { margin-top: 0; }
+.typehead b { font-family: var(--serif); font-size: 17px; color: var(--accent); }
+.typehead span { font-size: 12.5px; color: var(--ink-2); line-height: 1.6; }
+
+/* 記錄頁的分組標題，比上面那個小一號 */
+.subgroup { margin: 18px 0 8px; display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+.subgroup:first-child { margin-top: 0; }
+.subgroup .t {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .12em;
+  color: var(--accent); font-weight: 700;
 }
-.mu-row .v { color: var(--ink); }
-.mu-row .v.sub { color: var(--ink-2); font-size: 13px; }
-.mu-row b, .mu-feel b, .mu-wrong b { font-weight: 700; }
-.mu-feel, .mu-wrong {
-  margin: 0; font-size: 13px; line-height: 1.7; color: var(--ink-2);
-  padding-left: 11px; border-left: 3px solid var(--accent);
+.subgroup .h { font-size: 11.5px; color: var(--ink-3); }
+
+/* ---- 真實的解剖圖 ---- */
+.mgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.mcard {
+  margin: 0; background: var(--surface-2); border-radius: 10px; overflow: hidden;
+  display: flex; flex-direction: column;
 }
-.mu-feel b { display: block; color: var(--accent); font-size: 11.5px; font-family: var(--mono); margin-bottom: 2px; }
-.mu-wrong { border-left-color: var(--clay); }
-.mu-wrong b { display: block; color: var(--clay); font-size: 11.5px; font-family: var(--mono); margin-bottom: 2px; }
+.mcard img {
+  width: 100%; height: 130px; object-fit: contain;
+  background: #EFEAE0;            /* 解剖圖多半是白底，給它一個固定的淺底才不會糊在深色裡 */
+  padding: 6px;
+}
+.mcard figcaption {
+  padding: 9px 10px 10px; display: flex; flex-direction: column; gap: 2px;
+}
+.mcard figcaption b { font-size: 13px; }
+.mcard figcaption span { font-size: 11.5px; color: var(--ink-2); line-height: 1.5; }
+.mcard figcaption a {
+  font-family: var(--mono); font-size: 9.5px; color: var(--ink-3);
+  text-decoration: none; margin-top: 3px; line-height: 1.4;
+}
+
+/* ---- 做對了會這樣 ／ 不對的話 ---- */
+.guide-sec.good h4 { color: var(--accent); }
+.guide-sec.good ul { border-left: 3px solid var(--accent); padding-left: 18px; margin-left: 0; }
+.guide-sec.good li::marker { color: var(--accent); }
+.guide-sec.bad h4 { color: var(--clay); }
+.guide-sec dl { margin: 0; border-left: 3px solid var(--clay); padding-left: 13px; }
+.guide-sec dt {
+  font-size: 13.5px; font-weight: 700; color: var(--ink); line-height: 1.6; margin-top: 10px;
+}
+.guide-sec dt:first-child { margin-top: 0; }
+.guide-sec dd {
+  margin: 2px 0 0; font-size: 13px; color: var(--ink-2); line-height: 1.7;
+}
+.guide-sec dd::before { content: '→ '; color: var(--clay); }
+
+.safety {
+  margin: 0; padding: 11px 13px; border-radius: 10px;
+  background: var(--bad-soft); color: var(--bad);
+  font-size: 12.5px; line-height: 1.7;
+}
+
+.vlink.src svg { stroke: var(--accent); }
+.vlink.src svg path:last-child { fill: none; stroke: var(--accent); }
 
 /* ---- 為什麼這樣設計（整頁） ---- */
 .why-sec { background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--sh-1); padding: 18px; margin-bottom: 12px; }

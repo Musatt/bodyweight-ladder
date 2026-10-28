@@ -21,7 +21,8 @@
 //     那句話跟連續天數是同一個意思，一樣會製造壓力。
 // ============================================================
 
-import { BUILTIN, fmtAmount, quickPicks } from './habits.js';
+import { BUILTIN, TYPES, fmtAmount, quickPicks } from './habits.js';
+import { MUSCLES } from './muscles.js';
 import { figureSVG, guideFigure } from './figures.js';
 import { ymd, today, parseYMD, inGraceWindow, DAY_START_HOUR } from './day.js';
 import * as store from './store.js';
@@ -180,8 +181,26 @@ function renderLogTab() {
       + '<span class="sug">' + (it.sug ? esc(fmtAmount(it.unit, it.sug)) : '隨意') + '</span>'
       + (n ? '<span class="cnt">' + n + '</span>' : '') + '</button>';
   };
-  $('h-movegrid').innerHTML = items.filter((i) => i.cat === 'move').map(cell).join('');
-  $('h-othergrid').innerHTML = items.filter((i) => i.cat === 'other').map(cell).join('');
+
+  // 「動一動」依類型分組，挑的時候看得出這是肌力還是伸展。
+  // 自訂的項目沒有類型，統一歸到最後一組
+  const move = items.filter((i) => i.cat === 'move');
+  let h = '';
+  Object.keys(TYPES).forEach((t) => {
+    const g = move.filter((i) => i.type === t);
+    if (!g.length) return;
+    h += '<div class="subgroup"><span class="t">' + esc(TYPES[t].zh) + '</span>'
+      + '<span class="h">' + esc(TYPES[t].hint) + '</span></div>'
+      + '<div class="itemgrid">' + g.map(cell).join('') + '</div>';
+  });
+  const rest = move.filter((i) => !i.type);
+  if (rest.length) {
+    h += '<div class="subgroup"><span class="t">我加的</span></div>'
+      + '<div class="itemgrid">' + rest.map(cell).join('') + '</div>';
+  }
+  $('h-movegrid').innerHTML = h;
+  $('h-othergrid').innerHTML = '<div class="itemgrid">'
+    + items.filter((i) => i.cat === 'other').map(cell).join('') + '</div>';
 
   renderManage();
 }
@@ -316,30 +335,38 @@ function switchTab(t) {
 
 /* ---------- 整頁：動作說明 ---------- */
 
-/**
- * 「練到哪裡」那一塊。
- *
- * 除了列肌肉，更重要的是後面兩行：做對會有什麼感覺、感覺不對代表哪裡做錯了。
- * 知道肌肉名字幫不上忙，知道「該在哪裡有感覺」才檢查得出自己有沒有代償。
- */
-function muscleBlock(mu) {
-  return '<div class="muscle">'
-    + '<div class="mu-row"><span class="k">主要</span><span class="v">' + mu.main + '</span></div>'
-    + (mu.sub ? '<div class="mu-row"><span class="k">順帶</span><span class="v sub">' + mu.sub + '</span></div>' : '')
-    + '<p class="mu-feel"><b>做對會有的感覺</b>' + mu.feel + '</p>'
-    + (mu.wrong ? '<p class="mu-wrong"><b>感覺不對的話</b>' + mu.wrong + '</p>' : '')
-    + '</div>';
+/** 真實的解剖圖。每張都附授權和作者——CC BY-SA 要求標註，那是義務 */
+function muscleBlock(keys) {
+  const list = (keys || []).map((k) => MUSCLES[k]).filter(Boolean);
+  if (!list.length) return '';
+  return '<div class="guide-sec"><h4>練到哪裡</h4><div class="mgrid">'
+    + list.map((m) =>
+      '<figure class="mcard">'
+      + '<img src="' + esc(m.url) + '" alt="' + esc(m.zh) + '解剖圖" loading="lazy" decoding="async">'
+      + '<figcaption><b>' + esc(m.zh) + '</b><span>' + esc(m.where) + '</span>'
+      + '<a href="' + esc(m.page) + '" target="_blank" rel="noopener noreferrer">'
+      + esc(m.licence) + ' · ' + esc(m.author) + '</a></figcaption></figure>').join('')
+    + '</div></div>';
 }
 
 function renderGuide() {
   const items = BUILTIN.filter((i) => i.guide && i.guide.how);
-  $('gp-list').innerHTML = items.map((it, i) => {
+  let html = '';
+  let lastType = null;
+
+  items.forEach((it, i) => {
+    // 同一類的動作排在一起，每一類前面放一個說明
+    if (it.type !== lastType) {
+      const t = TYPES[it.type];
+      html += '<div class="typehead"><b>' + esc(t.zh) + '</b><span>' + esc(t.hint) + '</span></div>';
+      lastType = it.type;
+    }
+
     const g = it.guide;
-    // 優先用「起始／結束」兩格對照圖，沒畫的話退回單張姿勢圖
     const fig = guideFigure(it.key) || (it.fig ? figureSVG(it.fig[0], it.fig[1]) : null);
     const v = it.video;
 
-    return '<div class="guide-item">'
+    html += '<div class="guide-item">'
       + '<button class="guide-h" data-g="' + i + '">'
       + '<span class="nm">' + esc(it.name) + '</span>'
       + '<span class="amt">' + esc(fmtAmount(it.unit, it.sug)) + '</span>'
@@ -347,20 +374,29 @@ function renderGuide() {
       + '<div class="guide-b" hidden data-gb="' + i + '">'
       + (fig ? '<div class="guide-fig">' + fig + '</div>' : '')
       + '<p class="guide-note">' + g.what + '</p>'
-      + (g.muscle ? muscleBlock(g.muscle) : '')
+      + muscleBlock(it.muscles)
       + '<div class="guide-sec"><h4>怎麼做</h4><ol>'
       + g.how.map((s) => '<li>' + s + '</li>').join('') + '</ol></div>'
-      + '<div class="guide-sec"><h4>要點</h4><ul>'
-      + g.key.map((s) => '<li>' + s + '</li>').join('') + '</ul></div>'
-      + '<div class="guide-sec bad"><h4>常見錯誤</h4><ul>'
-      + g.bad.map((s) => '<li>' + esc(s) + '</li>').join('') + '</ul></div>'
+      + '<div class="guide-sec good"><h4>做對了會這樣</h4><ul>'
+      + g.right.map((s) => '<li>' + s + '</li>').join('') + '</ul></div>'
+      + '<div class="guide-sec bad"><h4>不對的話</h4><dl>'
+      + g.wrong.map(([sym, fix]) =>
+        '<dt>' + esc(sym) + '</dt><dd>' + esc(fix) + '</dd>').join('') + '</dl></div>'
+      + (g.safety ? '<p class="safety">⚠ ' + esc(g.safety) + '</p>' : '')
       + (v ? '<a class="vlink" href="https://www.youtube.com/watch?v=' + esc(v.id)
           + '" target="_blank" rel="noopener noreferrer">'
           + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z"/><path d="M10.5 9.2v5.6l4.6-2.8z"/></svg>'
-          + '<span class="t">' + esc(v.title) + '<span class="ch">' + esc(v.ch) + '</span></span>'
+          + '<span class="t">' + esc(v.title)
+          + '<span class="ch">' + esc(v.ch) + (v.len ? ' · ' + esc(v.len) : '') + '</span></span>'
+          + '<span class="go">↗</span></a>' : '')
+      + (it.source ? '<a class="vlink src" href="' + esc(it.source.url) + '" target="_blank" rel="noopener noreferrer">'
+          + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M9 8h6M9 12h4"/></svg>'
+          + '<span class="t">' + esc(it.source.title) + '<span class="ch">文字來源</span></span>'
           + '<span class="go">↗</span></a>' : '')
       + '</div></div>';
-  }).join('');
+  });
+
+  $('gp-list').innerHTML = html;
 
   $('gp-list').querySelectorAll('[data-g]').forEach((b) => {
     b.addEventListener('click', () => {
