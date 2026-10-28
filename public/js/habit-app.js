@@ -316,6 +316,21 @@ function switchTab(t) {
 
 /* ---------- 整頁：動作說明 ---------- */
 
+/**
+ * 「練到哪裡」那一塊。
+ *
+ * 除了列肌肉，更重要的是後面兩行：做對會有什麼感覺、感覺不對代表哪裡做錯了。
+ * 知道肌肉名字幫不上忙，知道「該在哪裡有感覺」才檢查得出自己有沒有代償。
+ */
+function muscleBlock(mu) {
+  return '<div class="muscle">'
+    + '<div class="mu-row"><span class="k">主要</span><span class="v">' + mu.main + '</span></div>'
+    + (mu.sub ? '<div class="mu-row"><span class="k">順帶</span><span class="v sub">' + mu.sub + '</span></div>' : '')
+    + '<p class="mu-feel"><b>做對會有的感覺</b>' + mu.feel + '</p>'
+    + (mu.wrong ? '<p class="mu-wrong"><b>感覺不對的話</b>' + mu.wrong + '</p>' : '')
+    + '</div>';
+}
+
 function renderGuide() {
   const items = BUILTIN.filter((i) => i.guide && i.guide.how);
   $('gp-list').innerHTML = items.map((it, i) => {
@@ -332,6 +347,7 @@ function renderGuide() {
       + '<div class="guide-b" hidden data-gb="' + i + '">'
       + (fig ? '<div class="guide-fig">' + fig + '</div>' : '')
       + '<p class="guide-note">' + g.what + '</p>'
+      + (g.muscle ? muscleBlock(g.muscle) : '')
       + '<div class="guide-sec"><h4>怎麼做</h4><ol>'
       + g.how.map((s) => '<li>' + s + '</li>').join('') + '</ol></div>'
       + '<div class="guide-sec"><h4>要點</h4><ul>'

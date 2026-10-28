@@ -461,6 +461,27 @@ select {
 .guide-sec.bad li::marker { color: var(--bad); }
 .guide-note { font-size: 13.5px; line-height: 1.75; color: var(--ink-2); margin: 0; }
 
+/* 練到哪裡。綠＝做對的感覺，陶土＝感覺不對，顏色跟 App 其他地方的語意一致 */
+.muscle {
+  background: var(--surface-2); border-radius: var(--r);
+  padding: 14px 15px; display: flex; flex-direction: column; gap: 9px;
+}
+.mu-row { display: flex; gap: 10px; align-items: baseline; font-size: 13.5px; line-height: 1.65; }
+.mu-row .k {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
+  color: var(--ink-3); flex: none; width: 30px; padding-top: 2px;
+}
+.mu-row .v { color: var(--ink); }
+.mu-row .v.sub { color: var(--ink-2); font-size: 13px; }
+.mu-row b, .mu-feel b, .mu-wrong b { font-weight: 700; }
+.mu-feel, .mu-wrong {
+  margin: 0; font-size: 13px; line-height: 1.7; color: var(--ink-2);
+  padding-left: 11px; border-left: 3px solid var(--accent);
+}
+.mu-feel b { display: block; color: var(--accent); font-size: 11.5px; font-family: var(--mono); margin-bottom: 2px; }
+.mu-wrong { border-left-color: var(--clay); }
+.mu-wrong b { display: block; color: var(--clay); font-size: 11.5px; font-family: var(--mono); margin-bottom: 2px; }
+
 /* ---- 為什麼這樣設計（整頁） ---- */
 .why-sec { background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--sh-1); padding: 18px; margin-bottom: 12px; }
 .why-sec h3 { font-family: var(--serif); font-size: 16px; margin: 0 0 9px; }
